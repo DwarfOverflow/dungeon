@@ -65,7 +65,7 @@ struct Wall {
     game_y: i32
 }
 
-#[derive(Component)]
+#[derive(Component, PartialEq)]
 struct BlueDoor {
     game_x: i32,
     game_y: i32
@@ -292,7 +292,7 @@ fn change_level_event_listener(
                                 },
                                 ..default()
                             },
-                            Chest { game_x, game_y, is_open: false},
+                            Chest::new(game_x, game_y),
                         ));
                     }
                     _ => (),
@@ -406,18 +406,38 @@ fn setup(
 
 fn move_player(
     mut player: Query<&mut Player>,
+    mut player_transform: Query<&mut Transform, With<Player>>,
     input: Res<Input<KeyCode>>,
-    mut change_level_event: EventWriter<TickEvent>
+    mut tick_event: EventWriter<TickEvent>,
+    blue_door_query: Query<&BlueDoor>
 ) {
     let mut player = player.single_mut();
+    if player.game_x.is_none() || player.game_y.is_none() { return; }
 
     if input.pressed(KeyCode::Left) && !player.is_animating {
         player.move_with_direction(Direction::Left);
-        change_level_event.send(TickEvent);
+        tick_event.send(TickEvent);
     }
     else if input.pressed(KeyCode::Right) && !player.is_animating {
         player.move_with_direction(Direction::Right);
-        change_level_event.send(TickEvent);
+        tick_event.send(TickEvent);
+    }
+    else if input.pressed(KeyCode::Up) && !player.is_animating {
+        println!("0");
+        // Blue Door
+        for door in blue_door_query.iter() {
+            if door.game_x == player.game_x.unwrap() && door.game_y == player.game_y.unwrap() {
+                // teleport player to other blue door 
+                for tp_door in blue_door_query.iter() {
+                    if door.game_x != tp_door.game_x && door.game_y != tp_door.game_y && chrono::Local::now().timestamp_millis() > 500 {
+                        let mut player_transform = player_transform.single_mut();
+                        player_transform.translation = player.move_without_animation(tp_door.game_x, tp_door.game_y).extend(0.);
+                        tick_event.send(TickEvent);
+                        return;
+                    }
+                }
+            }
+        }
     }
 }
 
