@@ -24,7 +24,7 @@ pub struct Chest {
     pub game_y: i32,
     pub is_open: bool,
     animation_index: i8,
-    has_spawn: bool,
+    pub has_spawn: bool,
 }
 
 impl Chest {
@@ -33,7 +33,6 @@ impl Chest {
     }
 
     pub fn open(&mut self) {
-        println!("open");
         self.is_open = true;
     }
 

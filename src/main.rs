@@ -1,4 +1,3 @@
-use bevy::ecs::query;
 use bevy::window::PrimaryWindow;
 use bevy::{math::*, prelude::*};
 use bevy::sprite::Anchor;

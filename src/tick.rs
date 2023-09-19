@@ -1,12 +1,12 @@
 use bevy::{ecs::{event::{Event, EventReader, EventWriter}, system::{ParamSet, Query}, query::With}, transform::components::Transform};
 
-use crate::{Player, Wall, Direction, SCREEN_GAME_Y};
+use crate::{Player, Wall, Direction, SCREEN_GAME_Y, Chest};
 
 #[derive(Event)]
 pub struct TickEvent;
 
 pub fn tick_event_listener(
-    mut events: ParamSet<(EventReader<TickEvent>, EventWriter<TickEvent>)>
+    mut events: ParamSet<(EventReader<TickEvent>, EventWriter<TickEvent>)>,
 ) {
     if events.p0().read().last().is_none() { return; }
 }
@@ -19,6 +19,7 @@ pub fn end_tick_event_listener(
     mut player: Query<&mut Player>,
     mut player_transform: Query<&mut Transform, With<Player>>,
     wall_query: Query<&Wall>,
+    mut chest_query: Query<&mut Chest>,
 ) {
     if events.p0().read().last().is_none() { return; }
 
@@ -58,6 +59,20 @@ pub fn end_tick_event_listener(
         if player_game_y < -1 {
             player_transform.translation = player.move_without_animation(player_game_x, SCREEN_GAME_Y-1).extend(0.);
             events.p1().send(TickEvent);
+        }
+    }
+
+    { //spawn monster if needed
+        let player = player.single();
+        if player.game_x.is_none() || player.game_y.is_none() || player.is_animating { return; }
+
+        if player.game_x.is_some() && player.game_y.is_some() {
+            for mut chest in chest_query.iter_mut() {
+                if chest.is_open && chest.has_spawn == false && !(player.game_x.unwrap() == chest.game_x && player.game_y.unwrap() == chest.game_y) {
+                    println!("spawn de monstre !");
+                    chest.has_spawn = true; // Faire spawn le monstre :)
+                }
+            }
         }
     }
 }
