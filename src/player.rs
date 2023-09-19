@@ -7,7 +7,8 @@ pub struct Player {
     pub game_x: Option<i32>,
     pub game_y: Option<i32>,
     pub is_animating: bool,
-    pub(crate) direction: Direction
+    pub(crate) direction: Direction,
+    pub(crate) has_change_pos: bool,
 }
 
 impl Player {
@@ -34,6 +35,7 @@ impl Player {
     }
 
     pub fn move_without_animation(&mut self, game_x: i32, game_y: i32) -> Vec2 {
+        self.has_change_pos = true;
         self.game_x = Some(game_x);
         self.game_y = Some(game_y);
 
@@ -44,6 +46,8 @@ impl Player {
     }
 
     fn move_with_animation(&mut self, game_x: i32, game_y: i32) {
+        self.has_change_pos = true;
+
         self.game_x = Some(game_x);
         self.game_y = Some(game_y);
 
@@ -60,12 +64,13 @@ impl Player {
             let was_animating = self.is_animating;
             self.is_animating = false;
             self.direction = Direction::No;
-            if was_animating {
+            if was_animating || self.has_change_pos {
                 return (target.extend(0.), true);
             } else {
                 return (target.extend(0.), false);
             }
         }
+        self.has_change_pos = false;
         self.is_animating = true;
         
         // Calculer étape intermédiaire

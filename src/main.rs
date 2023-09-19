@@ -98,7 +98,7 @@ fn setup(
             },
             ..Default::default()
         },
-        Player { game_x: None, game_y: None, is_animating: false, direction: Direction::No },
+        Player { game_x: None, game_y: None, is_animating: false, direction: Direction::No, has_change_pos:false },
     ));
 
     //walls
