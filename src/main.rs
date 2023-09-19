@@ -1,3 +1,4 @@
+use bevy::ecs::query;
 use bevy::window::PrimaryWindow;
 use bevy::{math::*, prelude::*};
 use bevy::sprite::Anchor;
@@ -54,7 +55,8 @@ fn main() {
         .add_systems(Startup, setup)
         .add_systems(Update, (
             change_level_event_listener,
-            move_player, animate_entity,
+            move_player, 
+            animate_entity,
             tick_event_listener,
             end_tick_event_listener
         ))
@@ -175,6 +177,7 @@ fn move_player(
 
     blue_door_query: Query<&BlueDoor>,
     red_door_query: Query<&RedDoor>,
+    mut chest_query: Query<&mut Chest>,
 
     buttons: Res<Input<MouseButton>>,
     mut begin_click: ResMut<BeginClick>,
@@ -248,37 +251,66 @@ fn move_player(
             change_level_event.send(ChangeLevelEvent);
             return;
         }
+
+        // Chest
+        for mut chest in chest_query.iter_mut() {
+            if chest.game_x == player.game_x.unwrap() && chest.game_y == player.game_y.unwrap() {
+                chest.open();
+                return;
+            }
+        }
     }
 }
 
 fn animate_entity(
-    mut player_query: Query<(&mut Transform, &mut Player, &mut Handle<Image>)>,
+    mut queries: ParamSet<(
+        Query<(&mut Transform, &mut Player, &mut Handle<Image>)>,
+        Query<(&mut Chest, &mut Handle<Image>)>,
+    )>,
     asset_server: Res<AssetServer>,
     mut end_tick_event: EventWriter<EndTickEvent>,
 ) {
-    let player_query = player_query.single_mut();
-    let mut player_transform = player_query.0;
-    let mut player = player_query.1;
-    let mut player_handle = player_query.2;
-    if player.game_x.is_none() || player.game_y.is_none() { return; }
+    // Player
+    {
+        let mut player_query = queries.p0();
 
-    let result = player.animate(&player_transform.translation);
-    player_transform.translation = result.0;
-    let end_tick = result.1;
+        let player_query = player_query.single_mut();
+        let mut player_transform = player_query.0;
+        let mut player = player_query.1;
+        let mut player_handle = player_query.2;
+        if player.game_x.is_none() || player.game_y.is_none() { return; }
 
-    let image_index = if chrono::Local::now().timestamp_millis() % 300 > 150 {1} else {2};
+        let result = player.animate(&player_transform.translation);
+        player_transform.translation = result.0;
+        let end_tick = result.1;
 
-    if player.direction == Direction::Left {
-        *player_handle = asset_server.load(format!("textures/entity/hero-left-{}.png", image_index));
-    } 
-    else if player.direction == Direction::Right {
-        *player_handle = asset_server.load(format!("textures/entity/hero-right-{}.png", image_index));
+        let image_index = if chrono::Local::now().timestamp_millis() % 300 > 150 {1} else {2};
+
+        if player.direction == Direction::Left {
+            *player_handle = asset_server.load(format!("textures/entity/hero-left-{}.png", image_index));
+        } 
+        else if player.direction == Direction::Right {
+            *player_handle = asset_server.load(format!("textures/entity/hero-right-{}.png", image_index));
+        }
+        else  {
+            *player_handle = asset_server.load("textures/entity/hero1.png");
+        }
+
+        if end_tick {
+            end_tick_event.send(EndTickEvent);
+        }
     }
-    else  {
-        *player_handle = asset_server.load("textures/entity/hero1.png");
-    }
 
-    if end_tick {
-        end_tick_event.send(EndTickEvent);
+    // Chest
+    {
+        let mut chest_query = queries.p1();
+
+        if chest_query.is_empty() { return; }
+        for mut chest in chest_query.iter_mut() {
+            match chest.0.animate() {
+                Some(t) => *chest.1 = asset_server.load(format!("textures/object/chest-{}.png", t)),
+                _ => ()
+            }
+        }
     }
 }

@@ -1,6 +1,6 @@
 use bevy::{ecs::{event::{Event, EventReader, EventWriter}, system::{ParamSet, Query}, query::With}, transform::components::Transform};
 
-use crate::{Player, Wall, Direction, player, SCREEN_GAME_Y};
+use crate::{Player, Wall, Direction, SCREEN_GAME_Y};
 
 #[derive(Event)]
 pub struct TickEvent;
@@ -9,7 +9,6 @@ pub fn tick_event_listener(
     mut events: ParamSet<(EventReader<TickEvent>, EventWriter<TickEvent>)>
 ) {
     if events.p0().read().last().is_none() { return; }
-    println!("tick !");
 }
 
 #[derive(Event)]
@@ -22,7 +21,6 @@ pub fn end_tick_event_listener(
     wall_query: Query<&Wall>,
 ) {
     if events.p0().read().last().is_none() { return; }
-    println!("end tick !");
 
     // Gravity
     {
