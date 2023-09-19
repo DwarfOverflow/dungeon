@@ -22,7 +22,7 @@ pub struct RedDoor {
 pub struct Chest {
     pub game_x: i32,
     pub game_y: i32,
-    is_open: bool,
+    pub is_open: bool,
     animation_index: i8,
     has_spawn: bool,
 }

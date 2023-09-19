@@ -247,7 +247,13 @@ fn move_player(
 
         // Red Door
         let red_door = red_door_query.single();
-        if red_door.game_x == player.game_x.unwrap() && red_door.game_y == player.game_y.unwrap() {
+        let mut all_chest_open = true;
+        for chest in chest_query.iter() {
+            if !chest.is_open {
+                all_chest_open = false;
+            }
+        }
+        if red_door.game_x == player.game_x.unwrap() && red_door.game_y == player.game_y.unwrap() && all_chest_open {
             change_level_event.send(ChangeLevelEvent);
             return;
         }
