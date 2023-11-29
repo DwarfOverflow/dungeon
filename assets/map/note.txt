@@ -3,3 +3,4 @@
 & : JOUEUR + AIR
 B : Porte Bleue
 R : Porte Rouge
+C : Coffre

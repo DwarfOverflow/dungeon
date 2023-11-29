@@ -38,7 +38,7 @@ fn main() {
         .insert_resource(CurrentLevel { level: 0 })
         .add_event::<ChangeLevelEvent>()
         .add_systems(Startup, setup)
-        .add_systems(Update, (event_listener, move_player, animate_entity))
+        .add_systems(Update, (change_level_event_listener, move_player, animate_entity))
         .run();
 }
 
@@ -132,6 +132,7 @@ impl Player {
 
         let vec2 = self.move_without_animation(self.game_x.unwrap(), self.game_y.unwrap());
 
+        // check if sprite is animating
         if vec2 == Vec2::new(9. + (self.game_x.unwrap()*50-RIGHT) as f32, (self.game_y.unwrap()*50-TOP) as f32) {
             self.is_animating = false;
         } else {
@@ -148,7 +149,7 @@ enum Direction {
     Right,
 }
 
-fn event_listener(
+fn change_level_event_listener(
     mut events: EventReader<ChangeLevelEvent>,
     mut level_res: ResMut<CurrentLevel>,
     mut commands: Commands,
@@ -163,6 +164,7 @@ fn event_listener(
         let wall_tex = asset_server.load("textures/walls/dungeon-wall.png");
         let blue_door_tex = asset_server.load("textures/walls/door-blue.png");
         let red_door_tex = asset_server.load("textures/walls/door-red.png");
+        let chest_tex = asset_server.load("textures/object/chest-1.png");
 
         let level_map = fs::read_to_string(format!("assets/map/level-{}", current_level))
             .expect("Erreur... Nous n'avons pas pu trouver le fichier de niveau.");
@@ -237,6 +239,25 @@ fn event_listener(
                             RedDoor { game_x, game_y },
                         ));
                     }
+                    'C' => {
+                        let block_pos = Vec2::new(block_pos.x, block_pos.y-5.);
+                        commands.spawn((
+                            SpriteBundle {
+                                texture: chest_tex.clone(),
+                                transform: Transform {
+                                    translation: block_pos.extend(0.),
+                                    ..default()
+                                },
+                                sprite: Sprite {
+                                    color: Color::rgb(1., 1., 1.),
+                                    custom_size: Some(Vec2::new(50., 50.,)),
+                                    ..default()
+                                },
+                                ..default()
+                            },
+                            Chest { game_x, game_y, is_open: false},
+                        ));
+                    }
                     _ => (),
                 }
                 game_x += 1;
@@ -269,7 +290,7 @@ fn setup(
                 ..Default::default()
             },
             transform: Transform {
-                translation: vec3(0., 0., 0.),
+                translation: vec3(0., 0., 1.),
                 scale: vec3(2., 2., 1.),
                 ..Default::default()
             },
