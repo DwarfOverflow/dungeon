@@ -1,0 +1,5 @@
+- : AIR
+1 : MUR
+& : JOUEUR + AIR
+B : Porte Bleue
+R : Porte Rouge
