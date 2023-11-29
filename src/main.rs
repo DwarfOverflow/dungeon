@@ -1,9 +1,10 @@
+use bevy::render::render_resource::Texture;
 use bevy::{math::*, prelude::*};
 use bevy::sprite::Anchor;
 use bevy_pixel_camera::{
     PixelCameraPlugin, PixelZoom, PixelViewport
 };
-use std::fmt::format;
+use chrono::format::format;
 use std::fs;
 
 // screen size
@@ -28,7 +29,7 @@ const SCREEN_GAME_X: i32 = 18;
 const SCREEN_GAME_Y: i32 = 12;
 
 // Animation
-const ANIMATION_SPEED: i32 = 10;
+const ANIMATION_SPEED: f32 = 3.;
 
 fn main() {
     App::new()
@@ -37,13 +38,21 @@ fn main() {
         .insert_resource(ClearColor(Color::rgb(0.05, 0.05, 0.05)))
         .insert_resource(CurrentLevel { level: 0 })
         .add_event::<ChangeLevelEvent>()
+        .add_event::<TickEvent>()
         .add_systems(Startup, setup)
-        .add_systems(Update, (change_level_event_listener, move_player, animate_entity))
+        .add_systems(Update, (
+            change_level_event_listener,
+            move_player, animate_entity,
+            tick_event_listener
+        ))
         .run();
 }
 
 #[derive(Event)]
 struct ChangeLevelEvent;
+
+#[derive(Event)]
+struct TickEvent;
 
 #[derive(Resource, Clone, Copy)]
 struct CurrentLevel {
@@ -86,6 +95,7 @@ struct Player {
     game_x: Option<i32>,
     game_y: Option<i32>,
     is_animating: bool,
+    direction: Direction
 }
 
 impl Player {
@@ -126,20 +136,38 @@ impl Player {
         self.check_if_outdoor();
     }
 
-    fn animate(&mut self) -> Vec3 {
+    fn animate(&mut self, current_position: &Vec3) -> Vec3 {
         if self.game_x.is_none() || self.game_y.is_none() { return vec3(0., 0., 0.); }
-        // Mieux animer
 
-        let vec2 = self.move_without_animation(self.game_x.unwrap(), self.game_y.unwrap());
+        let target = Vec2::new(9. + (self.game_x.unwrap()*50-RIGHT) as f32, (self.game_y.unwrap()*50-TOP) as f32);
 
-        // check if sprite is animating
-        if vec2 == Vec2::new(9. + (self.game_x.unwrap()*50-RIGHT) as f32, (self.game_y.unwrap()*50-TOP) as f32) {
+        if target.distance(current_position.truncate()) < ANIMATION_SPEED {
             self.is_animating = false;
-        } else {
-            self.is_animating = true;
+            self.direction = Direction::No;
+            return target.extend(0.);
         }
 
-        return vec2.extend(0.);
+        self.is_animating = true;
+
+        // si il bouge sur l'axe des Y
+        if target.x == current_position.x {
+            if target.y > current_position.y {
+                return vec3(current_position.x, current_position.y+ANIMATION_SPEED, 0.);
+            } else {
+                return vec3(current_position.x, current_position.y-ANIMATION_SPEED, 0.);
+            }
+        }
+
+        // Axe des X
+        else {
+            if target.x > current_position.x {
+                self.direction = Direction::Right;
+                return vec3(current_position.x+ANIMATION_SPEED, current_position.y, 0.);
+            } else {
+                self.direction = Direction::Left;
+                return vec3(current_position.x-ANIMATION_SPEED, current_position.y, 0.);
+            }
+        }
     }
 }
 
@@ -147,6 +175,15 @@ impl Player {
 enum Direction {
     Left,
     Right,
+    No,
+}
+
+
+fn tick_event_listener(
+    mut event: EventReader<TickEvent>,
+) {
+    if event.read().last().is_none() { return; }
+    println!("tick !");
 }
 
 fn change_level_event_listener(
@@ -296,7 +333,7 @@ fn setup(
             },
             ..Default::default()
         },
-        Player { game_x: None, game_y: None, is_animating: false },
+        Player { game_x: None, game_y: None, is_animating: false, direction: Direction::No },
     ));
 
     //walls
@@ -370,24 +407,41 @@ fn setup(
 fn move_player(
     mut player: Query<&mut Player>,
     input: Res<Input<KeyCode>>,
+    mut change_level_event: EventWriter<TickEvent>
 ) {
     let mut player = player.single_mut();
 
     if input.pressed(KeyCode::Left) && !player.is_animating {
         player.move_with_direction(Direction::Left);
+        change_level_event.send(TickEvent);
     }
-    if input.pressed(KeyCode::Right) && !player.is_animating {
+    else if input.pressed(KeyCode::Right) && !player.is_animating {
         player.move_with_direction(Direction::Right);
+        change_level_event.send(TickEvent);
     }
 }
 
 fn animate_entity(
-    mut player_query: Query<(&mut Transform, &mut Player)>,
+    mut player_query: Query<(&mut Transform, &mut Player, &mut Handle<Image>)>,
+    asset_server: Res<AssetServer>,
 ) {
     let player_query = player_query.single_mut();
     let mut player_transform = player_query.0;
     let mut player = player_query.1;
+    let mut player_handle = player_query.2;
     if player.game_x.is_none() || player.game_y.is_none() { return; }
 
-    player_transform.translation = player.animate();
+    player_transform.translation = player.animate(&player_transform.translation);
+
+    let image_index = if chrono::Local::now().timestamp_millis() % 300 > 150 {1} else {2};
+
+    if player.direction == Direction::Left {
+        *player_handle = asset_server.load(format!("textures/entity/hero-left-{}.png", image_index));
+    } 
+    else if player.direction == Direction::Right {
+        *player_handle = asset_server.load(format!("textures/entity/hero-right-{}.png", image_index));
+    }
+    else if player.direction == Direction::No {
+        *player_handle = asset_server.load("textures/entity/hero1.png");
+    }
 }
