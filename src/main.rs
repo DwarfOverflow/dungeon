@@ -1,10 +1,9 @@
-use bevy::render::render_resource::Texture;
+use bevy::window::PrimaryWindow;
 use bevy::{math::*, prelude::*};
 use bevy::sprite::Anchor;
 use bevy_pixel_camera::{
     PixelCameraPlugin, PixelZoom, PixelViewport
 };
-use chrono::format::format;
 use std::fs;
 
 // screen size
@@ -37,13 +36,14 @@ fn main() {
         .add_plugins(PixelCameraPlugin)
         .insert_resource(ClearColor(Color::rgb(0.05, 0.05, 0.05)))
         .insert_resource(CurrentLevel { level: 0 })
+        .insert_resource(BeginClick { position: None })
         .add_event::<ChangeLevelEvent>()
         .add_event::<TickEvent>()
         .add_systems(Startup, setup)
         .add_systems(Update, (
             change_level_event_listener,
             move_player, animate_entity,
-            tick_event_listener
+            tick_event_listener,
         ))
         .run();
 }
@@ -53,6 +53,11 @@ struct ChangeLevelEvent;
 
 #[derive(Event)]
 struct TickEvent;
+
+#[derive(Resource, Clone, Copy)]
+struct BeginClick {
+    position: Option<Vec2>
+}
 
 #[derive(Resource, Clone, Copy)]
 struct CurrentLevel {
@@ -205,6 +210,7 @@ fn change_level_event_listener(
 
         let level_map = fs::read_to_string(format!("assets/map/level-{}", current_level))
             .expect("Erreur... Nous n'avons pas pu trouver le fichier de niveau.");
+        // il faudra changer ça pour la version web
         
         let level_map: Vec<&str> = level_map.split_whitespace().collect();
 
@@ -409,21 +415,54 @@ fn move_player(
     mut player_transform: Query<&mut Transform, With<Player>>,
     input: Res<Input<KeyCode>>,
     mut tick_event: EventWriter<TickEvent>,
-    blue_door_query: Query<&BlueDoor>
+    blue_door_query: Query<&BlueDoor>,
+    buttons: Res<Input<MouseButton>>,
+    mut begin_click: ResMut<BeginClick>,
+    q_windows: Query<&Window, With<PrimaryWindow>>,
 ) {
     let mut player = player.single_mut();
     if player.game_x.is_none() || player.game_y.is_none() { return; }
 
-    if input.pressed(KeyCode::Left) && !player.is_animating {
+    let (mouse_left, mouse_right, mouse_tap) = {
+        if q_windows.single().cursor_position().is_none() { return; }
+        let current_position = q_windows.single().cursor_position().unwrap();
+
+        if buttons.just_pressed(MouseButton::Left) {
+            begin_click.position = Some(current_position);
+        }
+
+        let mut mouse_tap = false;
+        let mut mouse_left = false;
+        let mut mouse_right = false;
+        if begin_click.position.is_some() {
+            let begin_click_position = begin_click.position.unwrap().clone();
+            if buttons.just_released(MouseButton::Left) {
+                // Voir si il y a un mouvement
+                if begin_click_position.distance(current_position) > 100. { // scroll
+                    if begin_click_position.x < current_position.x {
+                        mouse_right = true;
+                    } else {
+                        mouse_left = true;
+                    }
+                } else { // click
+                    println!("click");
+                    mouse_tap = true;
+                }
+            }
+        }
+
+        (mouse_left, mouse_right, mouse_tap)
+    };
+
+    if (input.pressed(KeyCode::Left) || mouse_left) && !player.is_animating {
         player.move_with_direction(Direction::Left);
         tick_event.send(TickEvent);
     }
-    else if input.pressed(KeyCode::Right) && !player.is_animating {
+    else if (input.pressed(KeyCode::Right) || mouse_right) && !player.is_animating {
         player.move_with_direction(Direction::Right);
         tick_event.send(TickEvent);
     }
-    else if input.pressed(KeyCode::Up) && !player.is_animating {
-        println!("0");
+    else if (input.pressed(KeyCode::Up) || mouse_tap) && !player.is_animating {
         // Blue Door
         for door in blue_door_query.iter() {
             if door.game_x == player.game_x.unwrap() && door.game_y == player.game_y.unwrap() {
