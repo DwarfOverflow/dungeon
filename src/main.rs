@@ -1,3 +1,4 @@
+use bevy::ecs::system::WithEntity;
 use bevy::window::PrimaryWindow;
 use bevy::{math::*, prelude::*};
 use bevy::sprite::Anchor;
@@ -197,11 +198,32 @@ fn change_level_event_listener(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     mut player_query: Query<(&mut Transform, &mut Player)>,
+    mut despawn_blue_door_query: Query<Entity, With<BlueDoor>>,
+    mut despawn_red_door_query: Query<Entity, With<RedDoor>>,
+    mut despawn_wall_query: Query<Entity, With<Wall>>,
+    mut despawn_chest_query: Query<Entity, With<Chest>>,
 ) {
     if events.read().last().is_none() { return; }
     level_res.level += 1;
     let current_level = level_res.level;
 
+    // destroy ancient level
+    {
+        if !despawn_blue_door_query.is_empty() {
+            for entity in &mut despawn_blue_door_query { commands.entity(entity).despawn(); }
+        }
+        if !despawn_red_door_query.is_empty() {
+            for entity in &mut despawn_red_door_query { commands.entity(entity).despawn(); }
+        }
+        if !despawn_chest_query.is_empty() {
+            for entity in &mut despawn_chest_query { commands.entity(entity).despawn(); }
+        }
+        if !despawn_wall_query.is_empty() {
+            for entity in &mut despawn_wall_query { commands.entity(entity).despawn(); }
+        }
+    }
+
+    // build new level
     {
         let wall_tex = asset_server.load("textures/walls/dungeon-wall.png");
         let blue_door_tex = asset_server.load("textures/walls/door-blue.png");
@@ -413,12 +435,18 @@ fn setup(
 fn move_player(
     mut player: Query<&mut Player>,
     mut player_transform: Query<&mut Transform, With<Player>>,
-    input: Res<Input<KeyCode>>,
-    mut tick_event: EventWriter<TickEvent>,
+
     blue_door_query: Query<&BlueDoor>,
+    red_door_query: Query<&RedDoor>,
+
     buttons: Res<Input<MouseButton>>,
     mut begin_click: ResMut<BeginClick>,
     q_windows: Query<&Window, With<PrimaryWindow>>,
+
+    mut change_level_event: EventWriter<ChangeLevelEvent>,
+    mut tick_event: EventWriter<TickEvent>,
+
+    input: Res<Input<KeyCode>>,
 ) {
     let mut player = player.single_mut();
     if player.game_x.is_none() || player.game_y.is_none() { return; }
@@ -445,7 +473,6 @@ fn move_player(
                         mouse_left = true;
                     }
                 } else { // click
-                    println!("click");
                     mouse_tap = true;
                 }
             }
@@ -476,6 +503,14 @@ fn move_player(
                     }
                 }
             }
+        }
+
+        // Red Door
+        let red_door = red_door_query.single();
+        if red_door.game_x == player.game_x.unwrap() && red_door.game_y == player.game_y.unwrap() {
+            println!("RD");
+            change_level_event.send(ChangeLevelEvent);
+            return;
         }
     }
 }
