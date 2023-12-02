@@ -29,7 +29,7 @@ const SCREEN_GAME_X: i32 = 18;
 const SCREEN_GAME_Y: i32 = 12;
 
 // Animation
-const ANIMATION_SPEED: f32 = 3.;
+const ANIMATION_SPEED: f32 = 1.;
 
 fn main() {
     App::new()
@@ -45,6 +45,7 @@ fn main() {
             change_level_event_listener,
             move_player, animate_entity,
             tick_event_listener,
+            do_player_gravity,
         ))
         .run();
 }
@@ -117,11 +118,13 @@ impl Player {
     }
 
     fn move_with_direction(&mut self, direction: Direction) {
-        if direction == Direction::Left {
-            self.move_with_animation(self.game_x.unwrap()-1, self.game_y.unwrap());
-        }
-        else if direction == Direction::Right {
-            self.move_with_animation(self.game_x.unwrap()+1, self.game_y.unwrap());
+        if self.game_x.is_none() || self.game_y.is_none() { return; }
+
+        match direction {
+            Direction::Left => self.move_with_animation(self.game_x.unwrap()-1, self.game_y.unwrap()),
+            Direction::Right => self.move_with_animation(self.game_x.unwrap()+1, self.game_y.unwrap()),
+            Direction::Bottom => self.move_with_animation(self.game_x.unwrap(), self.game_y.unwrap()-1),
+            _ => ()
         }
     }
 
@@ -143,37 +146,43 @@ impl Player {
     }
 
     fn animate(&mut self, current_position: &Vec3) -> Vec3 {
+        println!("animate;");
         if self.game_x.is_none() || self.game_y.is_none() { return vec3(0., 0., 0.); }
 
         let target = Vec2::new(9. + (self.game_x.unwrap()*50-RIGHT) as f32, (self.game_y.unwrap()*50-TOP) as f32);
 
-        if target.distance(current_position.truncate()) < ANIMATION_SPEED {
+        if target.distance(current_position.truncate()) < ANIMATION_SPEED*2. {
             self.is_animating = false;
             self.direction = Direction::No;
             return target.extend(0.);
         }
-
         self.is_animating = true;
 
-        // si il bouge sur l'axe des Y
-        if target.x == current_position.x {
-            if target.y > current_position.y {
-                return vec3(current_position.x, current_position.y+ANIMATION_SPEED, 0.);
-            } else {
-                return vec3(current_position.x, current_position.y-ANIMATION_SPEED, 0.);
-            }
-        }
+        let angle = ((current_position.x-target.x)/target.distance(current_position.truncate())).asin();
+        let temporary_position =  Vec2::new(
+            -angle.sin()*ANIMATION_SPEED + current_position.x,
+            -angle.cos()*ANIMATION_SPEED + current_position.y
+        );
 
+        // si il bouge sur l'axe des Y
+        println!("1: {} 2: {}", current_position, target);
+        println!("G: 1:{} || 2:{}", vec2(target.x, 0.).distance(vec2(current_position.x, 0.)), vec2(0., target.y).distance(vec2(0., current_position.y)));
+        if vec2(target.x, 0.).distance(vec2(current_position.x, 0.)) < vec2(0., target.y).distance(vec2(0., current_position.y)) {
+            println!("BBBBBBB");
+            self.direction = Direction::Bottom;
+        }
         // Axe des X
         else {
             if target.x > current_position.x {
+                println!("RRRRRRRR");
                 self.direction = Direction::Right;
-                return vec3(current_position.x+ANIMATION_SPEED, current_position.y, 0.);
             } else {
+                println!("LLLLLLLLLLLL");
                 self.direction = Direction::Left;
-                return vec3(current_position.x-ANIMATION_SPEED, current_position.y, 0.);
             }
         }
+
+        return  temporary_position.extend(0.);
     }
 }
 
@@ -182,6 +191,7 @@ enum Direction {
     Left,
     Right,
     No,
+    Bottom
 }
 
 
@@ -198,6 +208,7 @@ fn change_level_event_listener(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     mut player_query: Query<(&mut Transform, &mut Player)>,
+
     mut despawn_blue_door_query: Query<Entity, With<BlueDoor>>,
     mut despawn_red_door_query: Query<Entity, With<RedDoor>>,
     mut despawn_wall_query: Query<Entity, With<Wall>>,
@@ -432,6 +443,34 @@ fn setup(
     change_level_event.send(ChangeLevelEvent);
 }
 
+fn do_player_gravity(
+    mut player: Query<&mut Player>,
+    wall_query: Query<&Wall>,
+    mut tick_event: EventWriter<TickEvent>,
+) {
+    let mut player = player.single_mut();
+    if player.game_x.is_none() || player.game_y.is_none() || player.is_animating { return; }
+    if wall_query.is_empty() { return; }
+
+    let player_game_x = player.game_x.unwrap();
+    let player_game_y = player.game_y.unwrap();
+
+    println!("Player Position : {} {}", player_game_x, player_game_y);
+
+    let mut is_wall_under_player = false;
+    for wall in wall_query.iter() {
+        if player_game_x == wall.game_x && player_game_y-1 == wall.game_y {
+            is_wall_under_player = true;
+        }
+    }
+
+    if is_wall_under_player == false {
+        println!("eeeeeeeeeeeeeee");
+        player.move_with_direction(Direction::Bottom);
+        tick_event.send(TickEvent);
+    }
+}
+
 fn move_player(
     mut player: Query<&mut Player>,
     mut player_transform: Query<&mut Transform, With<Player>>,
@@ -508,7 +547,6 @@ fn move_player(
         // Red Door
         let red_door = red_door_query.single();
         if red_door.game_x == player.game_x.unwrap() && red_door.game_y == player.game_y.unwrap() {
-            println!("RD");
             change_level_event.send(ChangeLevelEvent);
             return;
         }
@@ -535,7 +573,7 @@ fn animate_entity(
     else if player.direction == Direction::Right {
         *player_handle = asset_server.load(format!("textures/entity/hero-right-{}.png", image_index));
     }
-    else if player.direction == Direction::No {
+    else  {
         *player_handle = asset_server.load("textures/entity/hero1.png");
     }
 }
