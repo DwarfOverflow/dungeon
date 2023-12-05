@@ -1,3 +1,4 @@
+use bevy::ecs::component::Tick;
 use bevy::ecs::system::WithEntity;
 use bevy::window::PrimaryWindow;
 use bevy::{math::*, prelude::*};
@@ -40,12 +41,13 @@ fn main() {
         .insert_resource(BeginClick { position: None })
         .add_event::<ChangeLevelEvent>()
         .add_event::<TickEvent>()
+        .add_event::<EndTickEvent>()
         .add_systems(Startup, setup)
         .add_systems(Update, (
             change_level_event_listener,
             move_player, animate_entity,
             tick_event_listener,
-            do_player_gravity,
+            end_tick_event_listener
         ))
         .run();
 }
@@ -55,6 +57,9 @@ struct ChangeLevelEvent;
 
 #[derive(Event)]
 struct TickEvent;
+
+#[derive(Event)]
+struct EndTickEvent;
 
 #[derive(Resource, Clone, Copy)]
 struct BeginClick {
@@ -145,16 +150,20 @@ impl Player {
         self.check_if_outdoor();
     }
 
-    fn animate(&mut self, current_position: &Vec3) -> Vec3 {
-        println!("animate;");
-        if self.game_x.is_none() || self.game_y.is_none() { return vec3(0., 0., 0.); }
+    fn animate(&mut self, current_position: &Vec3) -> (Vec3, bool) {
+        if self.game_x.is_none() || self.game_y.is_none() { return (vec3(0., 0., 0.), false); }
 
         let target = Vec2::new(9. + (self.game_x.unwrap()*50-RIGHT) as f32, (self.game_y.unwrap()*50-TOP) as f32);
 
         if target.distance(current_position.truncate()) < ANIMATION_SPEED*2. {
+            let was_animating = self.is_animating;
             self.is_animating = false;
             self.direction = Direction::No;
-            return target.extend(0.);
+            if was_animating {
+                return (target.extend(0.), true);
+            } else {
+                return (target.extend(0.), false);
+            }
         }
         self.is_animating = true;
 
@@ -165,24 +174,19 @@ impl Player {
         );
 
         // si il bouge sur l'axe des Y
-        println!("1: {} 2: {}", current_position, target);
-        println!("G: 1:{} || 2:{}", vec2(target.x, 0.).distance(vec2(current_position.x, 0.)), vec2(0., target.y).distance(vec2(0., current_position.y)));
         if vec2(target.x, 0.).distance(vec2(current_position.x, 0.)) < vec2(0., target.y).distance(vec2(0., current_position.y)) {
-            println!("BBBBBBB");
             self.direction = Direction::Bottom;
         }
         // Axe des X
         else {
             if target.x > current_position.x {
-                println!("RRRRRRRR");
                 self.direction = Direction::Right;
             } else {
-                println!("LLLLLLLLLLLL");
                 self.direction = Direction::Left;
             }
         }
 
-        return  temporary_position.extend(0.);
+        return  (temporary_position.extend(0.), false);
     }
 }
 
@@ -194,11 +198,42 @@ enum Direction {
     Bottom
 }
 
+fn end_tick_event_listener(
+    mut events: ParamSet<(EventReader<EndTickEvent>, EventWriter<TickEvent>)>,
+    mut player: Query<&mut Player>,
+    wall_query: Query<&Wall>,
+) {
+    if events.p0().read().last().is_none() { return; }
+    println!("end tick !");
+
+    // Gravity
+    {
+        let mut player = player.single_mut();
+        if player.game_x.is_none() || player.game_y.is_none() || player.is_animating { return; }
+        if wall_query.is_empty() { return; }
+
+        let player_game_x = player.game_x.unwrap();
+        let player_game_y = player.game_y.unwrap();
+
+        
+        let mut is_wall_under_player = false;
+        for wall in wall_query.iter() {
+            if player_game_x == wall.game_x && player_game_y-1 == wall.game_y {
+                is_wall_under_player = true;
+            }
+        }
+
+        if is_wall_under_player == false {
+            player.move_with_direction(Direction::Bottom);
+            events.p1().send(TickEvent);
+        }
+    }
+}
 
 fn tick_event_listener(
-    mut event: EventReader<TickEvent>,
+    mut events: ParamSet<(EventReader<TickEvent>, EventWriter<TickEvent>)>
 ) {
-    if event.read().last().is_none() { return; }
+    if events.p0().read().last().is_none() { return; }
     println!("tick !");
 }
 
@@ -443,34 +478,6 @@ fn setup(
     change_level_event.send(ChangeLevelEvent);
 }
 
-fn do_player_gravity(
-    mut player: Query<&mut Player>,
-    wall_query: Query<&Wall>,
-    mut tick_event: EventWriter<TickEvent>,
-) {
-    let mut player = player.single_mut();
-    if player.game_x.is_none() || player.game_y.is_none() || player.is_animating { return; }
-    if wall_query.is_empty() { return; }
-
-    let player_game_x = player.game_x.unwrap();
-    let player_game_y = player.game_y.unwrap();
-
-    println!("Player Position : {} {}", player_game_x, player_game_y);
-
-    let mut is_wall_under_player = false;
-    for wall in wall_query.iter() {
-        if player_game_x == wall.game_x && player_game_y-1 == wall.game_y {
-            is_wall_under_player = true;
-        }
-    }
-
-    if is_wall_under_player == false {
-        println!("eeeeeeeeeeeeeee");
-        player.move_with_direction(Direction::Bottom);
-        tick_event.send(TickEvent);
-    }
-}
-
 fn move_player(
     mut player: Query<&mut Player>,
     mut player_transform: Query<&mut Transform, With<Player>>,
@@ -556,6 +563,7 @@ fn move_player(
 fn animate_entity(
     mut player_query: Query<(&mut Transform, &mut Player, &mut Handle<Image>)>,
     asset_server: Res<AssetServer>,
+    mut end_tick_event: EventWriter<EndTickEvent>,
 ) {
     let player_query = player_query.single_mut();
     let mut player_transform = player_query.0;
@@ -563,7 +571,9 @@ fn animate_entity(
     let mut player_handle = player_query.2;
     if player.game_x.is_none() || player.game_y.is_none() { return; }
 
-    player_transform.translation = player.animate(&player_transform.translation);
+    let result = player.animate(&player_transform.translation);
+    player_transform.translation = result.0;
+    let end_tick = result.1;
 
     let image_index = if chrono::Local::now().timestamp_millis() % 300 > 150 {1} else {2};
 
@@ -575,5 +585,9 @@ fn animate_entity(
     }
     else  {
         *player_handle = asset_server.load("textures/entity/hero1.png");
+    }
+
+    if end_tick {
+        end_tick_event.send(EndTickEvent);
     }
 }
