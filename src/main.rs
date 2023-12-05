@@ -1,5 +1,3 @@
-use bevy::ecs::component::Tick;
-use bevy::ecs::system::WithEntity;
 use bevy::window::PrimaryWindow;
 use bevy::{math::*, prelude::*};
 use bevy::sprite::Anchor;
@@ -7,6 +5,17 @@ use bevy_pixel_camera::{
     PixelCameraPlugin, PixelZoom, PixelViewport
 };
 use std::fs;
+
+mod level;
+pub use crate::level::*;
+mod simple_entities;
+pub use crate::simple_entities::*;
+mod player;
+pub use crate::player::*;
+mod ressource;
+pub use crate::ressource::*;
+mod tick;
+pub use crate::tick::*;
 
 // screen size
 const LEFT: i32 = -450;
@@ -30,7 +39,7 @@ const SCREEN_GAME_X: i32 = 18;
 const SCREEN_GAME_Y: i32 = 12;
 
 // Animation
-const ANIMATION_SPEED: f32 = 1.;
+const ANIMATION_SPEED: f32 = 1.5;
 
 fn main() {
     App::new()
@@ -52,330 +61,12 @@ fn main() {
         .run();
 }
 
-#[derive(Event)]
-struct ChangeLevelEvent;
-
-#[derive(Event)]
-struct TickEvent;
-
-#[derive(Event)]
-struct EndTickEvent;
-
-#[derive(Resource, Clone, Copy)]
-struct BeginClick {
-    position: Option<Vec2>
-}
-
-#[derive(Resource, Clone, Copy)]
-struct CurrentLevel {
-    level: usize,
-}
-
-#[derive(Component)]
-struct Wall {
-    game_x: i32,
-    game_y: i32
-}
-
-#[derive(Component, PartialEq)]
-struct BlueDoor {
-    game_x: i32,
-    game_y: i32
-}
-
-#[derive(Component)]
-struct RedDoor {
-    game_x: i32,
-    game_y: i32
-}
-
-#[derive(Component)]
-struct Chest {
-    game_x: i32,
-    game_y: i32,
-    is_open: bool
-}
-
-impl Chest {
-    fn new(game_x: i32, game_y: i32) -> Chest {
-        return Chest { game_x: game_x, game_y: game_y, is_open: false }
-    }
-}
-
-#[derive(Component)]
-struct Player {
-    game_x: Option<i32>,
-    game_y: Option<i32>,
-    is_animating: bool,
-    direction: Direction
-}
-
-impl Player {
-    fn check_if_outdoor(&mut self) {
-        if self.game_x.is_none() || self.game_y.is_none() { return; }
-
-        while self.game_x.unwrap() < 0 {
-            self.game_x = Some(self.game_x.unwrap() + 1);
-        }
-        while self.game_x.unwrap() >= SCREEN_GAME_X {
-            self.game_x = Some(self.game_x.unwrap() - 1);
-        }
-    }
-
-    fn move_with_direction(&mut self, direction: Direction) {
-        if self.game_x.is_none() || self.game_y.is_none() { return; }
-
-        match direction {
-            Direction::Left => self.move_with_animation(self.game_x.unwrap()-1, self.game_y.unwrap()),
-            Direction::Right => self.move_with_animation(self.game_x.unwrap()+1, self.game_y.unwrap()),
-            Direction::Bottom => self.move_with_animation(self.game_x.unwrap(), self.game_y.unwrap()-1),
-            _ => ()
-        }
-    }
-
-    fn move_without_animation(&mut self, game_x: i32, game_y: i32) -> Vec2 {
-        self.game_x = Some(game_x);
-        self.game_y = Some(game_y);
-
-        self.check_if_outdoor();
-
-        let res = vec2(9. + (game_x*50-RIGHT) as f32, (game_y*50-TOP) as f32);
-        return res;
-    }
-
-    fn move_with_animation(&mut self, game_x: i32, game_y: i32) {
-        self.game_x = Some(game_x);
-        self.game_y = Some(game_y);
-
-        self.check_if_outdoor();
-    }
-
-    fn animate(&mut self, current_position: &Vec3) -> (Vec3, bool) {
-        if self.game_x.is_none() || self.game_y.is_none() { return (vec3(0., 0., 0.), false); }
-
-        let target = Vec2::new(9. + (self.game_x.unwrap()*50-RIGHT) as f32, (self.game_y.unwrap()*50-TOP) as f32);
-
-        if target.distance(current_position.truncate()) < ANIMATION_SPEED*2. {
-            let was_animating = self.is_animating;
-            self.is_animating = false;
-            self.direction = Direction::No;
-            if was_animating {
-                return (target.extend(0.), true);
-            } else {
-                return (target.extend(0.), false);
-            }
-        }
-        self.is_animating = true;
-
-        let angle = ((current_position.x-target.x)/target.distance(current_position.truncate())).asin();
-        let temporary_position =  Vec2::new(
-            -angle.sin()*ANIMATION_SPEED + current_position.x,
-            -angle.cos()*ANIMATION_SPEED + current_position.y
-        );
-
-        // si il bouge sur l'axe des Y
-        if vec2(target.x, 0.).distance(vec2(current_position.x, 0.)) < vec2(0., target.y).distance(vec2(0., current_position.y)) {
-            self.direction = Direction::Bottom;
-        }
-        // Axe des X
-        else {
-            if target.x > current_position.x {
-                self.direction = Direction::Right;
-            } else {
-                self.direction = Direction::Left;
-            }
-        }
-
-        return  (temporary_position.extend(0.), false);
-    }
-}
-
 #[derive(PartialEq)]
 enum Direction {
     Left,
     Right,
     No,
     Bottom
-}
-
-fn end_tick_event_listener(
-    mut events: ParamSet<(EventReader<EndTickEvent>, EventWriter<TickEvent>)>,
-    mut player: Query<&mut Player>,
-    wall_query: Query<&Wall>,
-) {
-    if events.p0().read().last().is_none() { return; }
-    println!("end tick !");
-
-    // Gravity
-    {
-        let mut player = player.single_mut();
-        if player.game_x.is_none() || player.game_y.is_none() || player.is_animating { return; }
-        if wall_query.is_empty() { return; }
-
-        let player_game_x = player.game_x.unwrap();
-        let player_game_y = player.game_y.unwrap();
-
-        
-        let mut is_wall_under_player = false;
-        for wall in wall_query.iter() {
-            if player_game_x == wall.game_x && player_game_y-1 == wall.game_y {
-                is_wall_under_player = true;
-            }
-        }
-
-        if is_wall_under_player == false {
-            player.move_with_direction(Direction::Bottom);
-            events.p1().send(TickEvent);
-        }
-    }
-}
-
-fn tick_event_listener(
-    mut events: ParamSet<(EventReader<TickEvent>, EventWriter<TickEvent>)>
-) {
-    if events.p0().read().last().is_none() { return; }
-    println!("tick !");
-}
-
-fn change_level_event_listener(
-    mut events: EventReader<ChangeLevelEvent>,
-    mut level_res: ResMut<CurrentLevel>,
-    mut commands: Commands,
-    asset_server: Res<AssetServer>,
-    mut player_query: Query<(&mut Transform, &mut Player)>,
-
-    mut despawn_blue_door_query: Query<Entity, With<BlueDoor>>,
-    mut despawn_red_door_query: Query<Entity, With<RedDoor>>,
-    mut despawn_wall_query: Query<Entity, With<Wall>>,
-    mut despawn_chest_query: Query<Entity, With<Chest>>,
-) {
-    if events.read().last().is_none() { return; }
-    level_res.level += 1;
-    let current_level = level_res.level;
-
-    // destroy ancient level
-    {
-        if !despawn_blue_door_query.is_empty() {
-            for entity in &mut despawn_blue_door_query { commands.entity(entity).despawn(); }
-        }
-        if !despawn_red_door_query.is_empty() {
-            for entity in &mut despawn_red_door_query { commands.entity(entity).despawn(); }
-        }
-        if !despawn_chest_query.is_empty() {
-            for entity in &mut despawn_chest_query { commands.entity(entity).despawn(); }
-        }
-        if !despawn_wall_query.is_empty() {
-            for entity in &mut despawn_wall_query { commands.entity(entity).despawn(); }
-        }
-    }
-
-    // build new level
-    {
-        let wall_tex = asset_server.load("textures/walls/dungeon-wall.png");
-        let blue_door_tex = asset_server.load("textures/walls/door-blue.png");
-        let red_door_tex = asset_server.load("textures/walls/door-red.png");
-        let chest_tex = asset_server.load("textures/object/chest-1.png");
-
-        let level_map = fs::read_to_string(format!("assets/map/level-{}", current_level))
-            .expect("Erreur... Nous n'avons pas pu trouver le fichier de niveau.");
-        // il faudra changer ça pour la version web
-        
-        let level_map: Vec<&str> = level_map.split_whitespace().collect();
-
-        let mut game_x;
-        let mut game_y = level_map.len() as i32 -1;
-
-        for line in level_map {
-            game_x = 0;
-            for block in line.chars() {
-                let block_pos = vec2(25. +(game_x*50-RIGHT) as f32, 25. + (game_y*50-TOP) as f32);
-                match block {
-                    '1' => {
-                        commands.spawn((
-                            SpriteBundle {
-                                texture: wall_tex.clone(),
-                                transform: Transform {
-                                    translation: block_pos.extend(0.),
-                                    ..default()
-                                },
-                                sprite: Sprite {
-                                    color: Color::rgb(1., 1., 1.),
-                                    custom_size: Some(Vec2::new(50., 50.,)),
-                                    ..default()
-                                },
-                                ..default()
-                            },
-                            Wall { game_x, game_y },
-                        ));
-                    }
-                    '&' => {
-                        let player_query = player_query.single_mut();
-                        let mut player_transform = player_query.0;
-                        let mut player = player_query.1;
-                        player_transform.translation = player.move_without_animation(game_x, game_y).extend(0.);
-                    }
-                    'B' => {
-                        commands.spawn((
-                            SpriteBundle {
-                                texture: blue_door_tex.clone(),
-                                transform: Transform {
-                                    translation: block_pos.extend(0.),
-                                    ..default()
-                                },
-                                sprite: Sprite {
-                                    color: Color::rgb(1., 1., 1.),
-                                    custom_size: Some(Vec2::new(50., 50.,)),
-                                    ..default()
-                                },
-                                ..default()
-                            },
-                            BlueDoor { game_x, game_y },
-                        ));
-                    }
-                    'R' => {
-                        commands.spawn((
-                            SpriteBundle {
-                                texture: red_door_tex.clone(),
-                                transform: Transform {
-                                    translation: block_pos.extend(0.),
-                                    ..default()
-                                },
-                                sprite: Sprite {
-                                    color: Color::rgb(1., 1., 1.),
-                                    custom_size: Some(Vec2::new(50., 50.,)),
-                                    ..default()
-                                },
-                                ..default()
-                            },
-                            RedDoor { game_x, game_y },
-                        ));
-                    }
-                    'C' => {
-                        let block_pos = Vec2::new(block_pos.x, block_pos.y-5.);
-                        commands.spawn((
-                            SpriteBundle {
-                                texture: chest_tex.clone(),
-                                transform: Transform {
-                                    translation: block_pos.extend(0.),
-                                    ..default()
-                                },
-                                sprite: Sprite {
-                                    color: Color::rgb(1., 1., 1.),
-                                    custom_size: Some(Vec2::new(50., 50.,)),
-                                    ..default()
-                                },
-                                ..default()
-                            },
-                            Chest::new(game_x, game_y),
-                        ));
-                    }
-                    _ => (),
-                }
-                game_x += 1;
-            }
-            game_y -= 1;
-        }
-    }
 }
 
 fn setup(
