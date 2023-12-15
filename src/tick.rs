@@ -1,6 +1,6 @@
 use bevy::{ecs::{event::{Event, EventReader, EventWriter}, system::{ParamSet, Query, Commands, Res}, query::With}, transform::components::Transform, sprite::{SpriteBundle, Sprite}, prelude::default, render::color::Color, math::Vec2, asset::AssetServer};
 
-use crate::{Player, Wall, Direction, SCREEN_GAME_Y, Chest, Monster};
+use crate::{Player, Wall, Direction, SCREEN_GAME_Y, Chest, Monster, ChangeLevelEvent};
 
 #[derive(Event)]
 pub struct TickEvent;
@@ -31,9 +31,10 @@ pub fn tick_event_listener(
 pub struct EndTickEvent;
 
 pub fn end_tick_event_listener(
-    mut events: ParamSet<(EventReader<EndTickEvent>, EventWriter<TickEvent>)>,
+    mut events: ParamSet<(EventReader<EndTickEvent>, EventWriter<TickEvent>, EventWriter<ChangeLevelEvent>)>,
     mut player: Query<&mut Player>,
     mut player_transform: Query<&mut Transform, With<Player>>,
+    monster_query: Query<&Monster>,
     wall_query: Query<&Wall>,
     mut chest_query: Query<&mut Chest>,
     mut commands: Commands,
@@ -114,6 +115,12 @@ pub fn end_tick_event_listener(
     }
 
     { // Regarder si le monstre percute le joueur
-        
+        let player = player.single();
+        if player.game_x.is_none() || player.game_y.is_none() { return; }
+        for monster in monster_query.iter() {
+            if monster.game_x() == player.game_x.unwrap() && monster.game_y() == player.game_y.unwrap() {
+                events.p2().send(ChangeLevelEvent { new_level: false });
+            }
+        }
     }
 }
