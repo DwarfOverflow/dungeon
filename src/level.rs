@@ -3,10 +3,12 @@ use bevy::{ecs::{event::{Event, EventReader}, system::{Commands, ResMut, Res, Qu
 use crate::*;
 
 #[derive(Event)]
-pub struct ChangeLevelEvent;
+pub struct ChangeLevelEvent {
+    pub new_level: bool,
+}
 
 pub fn change_level_event_listener(
-    mut events: EventReader<ChangeLevelEvent>,
+    mut change_level_event: EventReader<ChangeLevelEvent>,
     mut level_res: ResMut<CurrentLevel>,
     mut commands: Commands,
     asset_server: Res<AssetServer>,
@@ -16,9 +18,16 @@ pub fn change_level_event_listener(
     mut despawn_red_door_query: Query<Entity, With<RedDoor>>,
     mut despawn_wall_query: Query<Entity, With<Wall>>,
     mut despawn_chest_query: Query<Entity, With<Chest>>,
+    mut despawn_monster_query: Query<Entity, With<Monster>>,
 ) {
-    if events.read().last().is_none() { return; }
-    level_res.level += 1;
+    match change_level_event.read().last() {
+        None => return,
+        Some(event) => {
+            if event.new_level {
+                level_res.level += 1;
+            }
+        }
+    }
     let current_level = level_res.level;
 
     // destroy ancient level
@@ -34,6 +43,9 @@ pub fn change_level_event_listener(
         }
         if !despawn_wall_query.is_empty() {
             for entity in &mut despawn_wall_query { commands.entity(entity).despawn(); }
+        }
+        if !despawn_monster_query.is_empty() {
+            for entity in &mut despawn_monster_query { commands.entity(entity).despawn(); }
         }
     }
 

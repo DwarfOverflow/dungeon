@@ -10,6 +10,8 @@ mod level;
 pub use crate::level::*;
 mod simple_entities;
 pub use crate::simple_entities::*;
+mod monster;
+pub use crate::monster::Monster;
 mod player;
 pub use crate::player::*;
 mod ressource;
@@ -62,7 +64,7 @@ fn main() {
         .run();
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Clone, Copy)]
 enum Direction {
     Left,
     Right,
@@ -167,7 +169,7 @@ fn setup(
             });
     }
 
-    change_level_event.send(ChangeLevelEvent);
+    change_level_event.send(ChangeLevelEvent {new_level:true});
 }
 
 fn move_player(
@@ -253,7 +255,7 @@ fn move_player(
             }
         }
         if red_door.game_x == player.game_x.unwrap() && red_door.game_y == player.game_y.unwrap() && all_chest_open {
-            change_level_event.send(ChangeLevelEvent);
+            change_level_event.send(ChangeLevelEvent {new_level:true});
             return;
         }
 
@@ -271,6 +273,7 @@ fn animate_entity(
     mut queries: ParamSet<(
         Query<(&mut Transform, &mut Player, &mut Handle<Image>)>,
         Query<(&mut Chest, &mut Handle<Image>)>,
+        Query<(&mut Transform, &mut Monster, &mut Handle<Image>)>
     )>,
     asset_server: Res<AssetServer>,
     mut end_tick_event: EventWriter<EndTickEvent>,
@@ -315,6 +318,25 @@ fn animate_entity(
             match chest.0.animate() {
                 Some(t) => *chest.1 = asset_server.load(format!("textures/object/chest-{}.png", t)),
                 _ => ()
+            }
+        }
+    }
+
+    { // Monster
+        let mut monster_query = queries.p2();
+        for monster in monster_query.iter_mut() {
+            let mut monster_transform = monster.0;
+            let mut monster_entity = monster.1;
+            let mut monster_image = monster.2;
+
+            monster_transform.translation = monster_entity.animate(&monster_transform.translation);
+
+            let image_index = if chrono::Local::now().timestamp_millis() % 600 > 300 {1} else {2};
+            if monster_entity.direction() == Direction::Left {
+                *monster_image = asset_server.load(format!("textures/entity/left-bat-{}.png", image_index));
+            } 
+            else { // Right is the default direction
+                *monster_image = asset_server.load(format!("textures/entity/right-bat-{}.png", image_index));
             }
         }
     }
