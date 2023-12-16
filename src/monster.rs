@@ -1,6 +1,8 @@
 use bevy::{ecs::component::Component, math::{Vec3, Vec2}};
 
-use crate::{Direction, TOP, RIGHT, ANIMATION_SPEED};
+use crate::{Direction, TOP, RIGHT};
+
+const ANIMATION_SPEED: f32 = 1.1;
 
 #[derive(Component)]
 pub struct Monster {

@@ -98,7 +98,7 @@ pub fn end_tick_event_listener(
                             transform: Transform {
                                 translation: Monster::get_translation(chest.game_x, chest.game_y).extend(0.),
                                 ..default()
-                            }, // rendre l'image bien placé et joli
+                            },
                             sprite: Sprite {
                                 color: Color::rgb(1., 1., 1.),
                                 custom_size: Some(Vec2::new(45., 45.,)),

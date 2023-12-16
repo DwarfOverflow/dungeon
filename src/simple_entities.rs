@@ -37,7 +37,7 @@ impl Chest {
     }
 
     pub fn animate(&mut self) -> Option<i8> {
-        if self.is_open && self.animation_index < 4 && chrono::Local::now().timestamp_millis() % 10000 > 5000 {
+        if self.is_open && self.animation_index < 4 && chrono::Local::now().timestamp_millis() % 500 > 250 {
             self.animation_index += 1; // Animation à améliorer !
             return Some(self.animation_index);
         }
