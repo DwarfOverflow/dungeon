@@ -65,9 +65,9 @@ impl Player {
             self.is_animating = false;
             self.direction = Direction::No;
             if was_animating || self.has_change_pos {
-                return (target.extend(0.), true);
+                return (target.extend(1.), true);
             } else {
-                return (target.extend(0.), false);
+                return (target.extend(1.), false);
             }
         }
         self.has_change_pos = false;
@@ -93,6 +93,6 @@ impl Player {
             }
         }
 
-        return  (temporary_position.extend(0.), false);
+        return  (temporary_position.extend(1.), false);
     }
 }
