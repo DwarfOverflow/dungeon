@@ -4,7 +4,6 @@ use bevy::sprite::Anchor;
 use bevy_pixel_camera::{
     PixelCameraPlugin, PixelZoom, PixelViewport
 };
-use std::fs;
 
 mod level;
 pub use crate::level::*;
@@ -47,9 +46,12 @@ fn main() {
     App::new()
         .add_plugins(DefaultPlugins.set(ImagePlugin::default_nearest()))
         .add_plugins(PixelCameraPlugin)
+        .init_asset::<LevelAsset>()
+        .init_asset_loader::<LevelAssetLoader>()
         .insert_resource(ClearColor(Color::rgb(0.05, 0.05, 0.05)))
         .insert_resource(CurrentLevel { level: 0 })
         .insert_resource(BeginClick { position: None })
+        .init_resource::<LevelMaps>()
         .add_event::<ChangeLevelEvent>()
         .add_event::<TickEvent>()
         .add_event::<EndTickEvent>()
@@ -59,7 +61,8 @@ fn main() {
             move_player, 
             animate_entity,
             tick_event_listener,
-            end_tick_event_listener
+            end_tick_event_listener,
+            send_maps_on_load
         ))
         .run();
 }
@@ -75,6 +78,7 @@ enum Direction {
 fn setup(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
+    mut level_maps: ResMut<LevelMaps>,
     mut change_level_event: EventWriter<ChangeLevelEvent>
 ) {
     commands.spawn((
@@ -85,6 +89,12 @@ fn setup(
         },
         PixelViewport,
     ));
+
+    // load assets
+    for index in 0..NB_LEVEL {
+        level_maps.maps = Vec::new();
+        level_maps.maps_handle.push(asset_server.load(format!("map/level-{}.lev", index+1)));
+    }
 
     // Player
     commands.spawn((

@@ -1,6 +1,11 @@
-use bevy::{ecs::{event::{Event, EventReader}, system::{Commands, ResMut, Res, Query}, entity::Entity, query::With}, asset::AssetServer, transform::components::Transform};
+use bevy::{ecs::{event::{Event, EventReader}, system::{Commands, ResMut, Res, Query}, entity::Entity, query::With}, asset::{AssetServer, LoadContext, AssetLoader, io::Reader, AsyncReadExt}, transform::components::Transform, utils::BoxedFuture};
+use serde::Deserialize;
+use bevy::utils::thiserror;
 
+use thiserror::Error;
 use crate::*;
+
+pub const NB_LEVEL: i32 = 3;
 
 #[derive(Event)]
 pub struct ChangeLevelEvent {
@@ -12,6 +17,7 @@ pub fn change_level_event_listener(
     mut level_res: ResMut<CurrentLevel>,
     mut commands: Commands,
     asset_server: Res<AssetServer>,
+    custom_assets: ResMut<Assets<LevelAsset>>,
     mut player_query: Query<(&mut Transform, &mut Player)>,
 
     mut despawn_blue_door_query: Query<Entity, With<BlueDoor>>,
@@ -56,11 +62,17 @@ pub fn change_level_event_listener(
         let red_door_tex = asset_server.load("textures/walls/door-red.png");
         let chest_tex = asset_server.load("textures/object/chest-1.png");
 
-        let level_map = fs::read_to_string(format!("assets/map/level-{}", current_level))
-            .expect("Erreur... Nous n'avons pas pu trouver le fichier de niveau.");
-        // il faudra changer ça pour la version web
-        
-        let level_map: Vec<&str> = level_map.split_whitespace().collect();
+        let level_map = {
+            let handle: Handle<LevelAsset> = asset_server.load(format!("map/level-{}.lev", current_level));
+            let custom_asset = custom_assets.get(&handle);
+            let level_map = &custom_asset.unwrap().map;
+            let level_map: Vec<&str> = level_map.split_whitespace().collect();
+            level_map
+
+            /*
+            Voir l'exemple
+             */
+        };
 
         let mut game_x;
         let mut game_y = level_map.len() as i32 -1;
@@ -155,5 +167,67 @@ pub fn change_level_event_listener(
             }
             game_y -= 1;
         }
+    }
+}
+
+pub fn send_maps_on_load(mut level_maps: ResMut<LevelMaps>, custom_assets: ResMut<Assets<LevelAsset>>) {
+    if level_maps.sended { return; }
+    let mut maps = Vec::new();
+    for map_handle in &level_maps.maps_handle {
+        match custom_assets.get(map_handle) {
+            Some(v) => maps.push(v.clone()),
+            None => return
+        }
+    }
+    level_maps.maps = maps;
+
+    level_maps.sended = true;
+}
+
+#[derive(Resource, Default)]
+pub struct LevelMaps {
+    pub maps_handle: Vec<Handle<LevelAsset>>,
+    pub maps: Vec<LevelAsset>,
+    pub sended: bool,
+}
+
+#[derive(Asset, TypePath, Debug, Deserialize, Clone)]
+pub struct LevelAsset {
+    pub map: String,
+}
+
+#[derive(Default)]
+pub struct LevelAssetLoader;
+
+/// Possible errors that can be produced by [`LevelAssetLoader`]
+#[non_exhaustive]
+#[derive(Debug, Error)]
+pub enum LevelAssetLoaderError {
+    /// An [IO](std::io) Error
+    #[error("Could not load asset: {0}")]
+    Io(#[from] std::io::Error),
+}
+
+impl AssetLoader for LevelAssetLoader {
+    type Asset = LevelAsset;
+    type Settings = ();
+    type Error = LevelAssetLoaderError;
+    fn load<'a>(
+        &'a self,
+        reader: &'a mut Reader,
+        _settings: &'a (),
+        _load_context: &'a mut LoadContext,
+    ) -> BoxedFuture<'a, Result<Self::Asset, Self::Error>> {
+        Box::pin(async move {
+            let mut bytes = Vec::new();
+            reader.read_to_end(&mut bytes).await?;
+            let map = String::from_utf8(bytes).unwrap();
+            let custom_asset = LevelAsset { map };
+            Ok(custom_asset)
+        })
+    }
+
+    fn extensions(&self) -> &[&str] {
+        &["lev"]
     }
 }

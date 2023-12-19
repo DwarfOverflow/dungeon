@@ -88,7 +88,6 @@ pub fn end_tick_event_listener(
         if player.game_x.is_some() && player.game_y.is_some() {
             for mut chest in chest_query.iter_mut() {
                 if chest.is_open && chest.has_spawn == false && !(player.game_x.unwrap() == chest.game_x && player.game_y.unwrap() == chest.game_y) {
-                    println!("spawn de monstre !");
                     chest.has_spawn = true;
 
                     let monster_tex = asset_server.load("textures/entity/left-bat-1.png");

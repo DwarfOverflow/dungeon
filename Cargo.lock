@@ -1540,6 +1540,7 @@ dependencies = [
  "bevy_common_assets",
  "bevy_pixel_camera",
  "chrono",
+ "serde",
 ]
 
 [[package]]
