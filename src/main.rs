@@ -44,7 +44,17 @@ const ANIMATION_SPEED: f32 = 1.5;
 
 fn main() {
     App::new()
-        .add_plugins(DefaultPlugins.set(ImagePlugin::default_nearest()))
+        .add_plugins(DefaultPlugins
+            .set(ImagePlugin::default_nearest())
+            .set(WindowPlugin {
+                primary_window: Some(Window {
+                    fit_canvas_to_parent: true,
+                    prevent_default_event_handling: false,
+                    ..default()
+                }),
+                ..default()
+            })
+        )
         .add_plugins(PixelCameraPlugin)
         .init_asset::<LevelAsset>()
         .init_asset_loader::<LevelAssetLoader>()
