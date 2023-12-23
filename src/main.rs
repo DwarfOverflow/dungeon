@@ -304,8 +304,8 @@ pub struct TexturesRessource {
     pub player_right: (Handle<Image>, Handle<Image>),
     pub player_left: (Handle<Image>, Handle<Image>),
 
-    pub bat_right: (Handle<Image>, Handle<Image>),
-    pub bat_left: (Handle<Image>, Handle<Image>)
+    pub bat_right: (Handle<Image>, Handle<Image>), // never used but it save handle in memory
+    pub bat_left: (Handle<Image>, Handle<Image>)   // same
 }
 
 fn animate_entity(
