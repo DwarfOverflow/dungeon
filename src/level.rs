@@ -170,7 +170,7 @@ pub fn change_level_event_listener(
     }
 }
 
-pub fn send_maps_on_load(mut level_maps: ResMut<LevelMaps>, custom_assets: ResMut<Assets<LevelAsset>>) {
+pub fn send_maps_on_load(mut level_maps: ResMut<LevelMaps>, custom_assets: ResMut<Assets<LevelAsset>>, mut change_level_event: EventWriter<ChangeLevelEvent>) {
     if level_maps.sended { return; }
     let mut maps = Vec::new();
     for map_handle in &level_maps.maps_handle {
@@ -179,8 +179,8 @@ pub fn send_maps_on_load(mut level_maps: ResMut<LevelMaps>, custom_assets: ResMu
             None => return
         }
     }
-    level_maps.maps = maps;
 
+    change_level_event.send(ChangeLevelEvent {new_level:true});
     level_maps.sended = true;
 }
 

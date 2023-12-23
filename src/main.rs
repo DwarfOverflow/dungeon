@@ -89,7 +89,6 @@ fn setup(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     mut level_maps: ResMut<LevelMaps>,
-    mut change_level_event: EventWriter<ChangeLevelEvent>
 ) {
     commands.spawn((
         Camera2dBundle::default(),
@@ -188,8 +187,6 @@ fn setup(
                 ..default()
             });
     }
-
-    change_level_event.send(ChangeLevelEvent {new_level:true});
 }
 
 fn move_player(
