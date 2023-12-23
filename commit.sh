@@ -12,3 +12,4 @@ cp dist/* /home/simon/projet/naincroyable.github.io/
 cd /home/simon/projet/naincroyable.github.io/
 git add *
 git commit -m "auto commit"
+git push origin main
