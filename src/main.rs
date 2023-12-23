@@ -1,3 +1,4 @@
+use bevy::reflect::GetTupleField;
 use bevy::window::PrimaryWindow;
 use bevy::{math::*, prelude::*};
 use bevy::sprite::Anchor;
@@ -62,6 +63,7 @@ fn main() {
         .insert_resource(CurrentLevel { level: 0 })
         .insert_resource(BeginClick { position: None })
         .init_resource::<LevelMaps>()
+        .init_resource::<TexturesRessource>()
         .add_event::<ChangeLevelEvent>()
         .add_event::<TickEvent>()
         .add_event::<EndTickEvent>()
@@ -89,6 +91,7 @@ fn setup(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     mut level_maps: ResMut<LevelMaps>,
+    mut textures_ressource: ResMut<TexturesRessource>,
 ) {
     commands.spawn((
         Camera2dBundle::default(),
@@ -99,10 +102,19 @@ fn setup(
         PixelViewport,
     ));
 
-    // load assets
+    // load level assets
     for index in 0..NB_LEVEL {
         level_maps.maps = Vec::new();
         level_maps.maps_handle.push(asset_server.load(format!("map/level-{}.lev", index+1)));
+    }
+
+    { // load complex entities assets
+        textures_ressource.player_center = asset_server.load("textures/entity/hero1.png");
+        textures_ressource.player_left = (asset_server.load("textures/entity/hero-left-1.png"), asset_server.load("textures/entity/hero-left-2.png"));
+        textures_ressource.player_right = (asset_server.load("textures/entity/hero-right-1.png"), asset_server.load("textures/entity/hero-right-2.png"));
+
+        textures_ressource.bat_left = (asset_server.load("textures/entity/left-bat-1.png"), asset_server.load("textures/entity/left-bat-2.png"));
+        textures_ressource.bat_right = (asset_server.load("textures/entity/right-bat-1.png"), asset_server.load("textures/entity/right-bat-2.png"));
     }
 
     // Player
@@ -286,12 +298,23 @@ fn move_player(
     }
 }
 
+#[derive(Resource, Default)]
+pub struct TexturesRessource {
+    pub player_center: Handle<Image>,
+    pub player_right: (Handle<Image>, Handle<Image>),
+    pub player_left: (Handle<Image>, Handle<Image>),
+
+    pub bat_right: (Handle<Image>, Handle<Image>),
+    pub bat_left: (Handle<Image>, Handle<Image>)
+}
+
 fn animate_entity(
     mut queries: ParamSet<(
         Query<(&mut Transform, &mut Player, &mut Handle<Image>)>,
         Query<(&mut Chest, &mut Handle<Image>)>,
         Query<(&mut Transform, &mut Monster, &mut Handle<Image>)>
     )>,
+    textures_ressource: Res<TexturesRessource>,
     asset_server: Res<AssetServer>,
     mut end_tick_event: EventWriter<EndTickEvent>,
 ) {
@@ -309,16 +332,17 @@ fn animate_entity(
         player_transform.translation = result.0;
         let end_tick = result.1;
 
-        let image_index = if chrono::Local::now().timestamp_millis() % 300 > 150 {1} else {2};
+        let image_index = if chrono::Local::now().timestamp_millis() % 300 > 150 {0} else {1};
 
         if player.direction == Direction::Left {
-            *player_handle = asset_server.load(format!("textures/entity/hero-left-{}.png", image_index));
+            //*player_handle = asset_server.load(format!("textures/entity/hero-left-{}.png", image_index));
+            *player_handle = textures_ressource.player_left.get_field::<Handle<Image>>(image_index).unwrap().clone();
         } 
         else if player.direction == Direction::Right {
-            *player_handle = asset_server.load(format!("textures/entity/hero-right-{}.png", image_index));
+            *player_handle = textures_ressource.player_right.get_field::<Handle<Image>>(image_index).unwrap().clone();
         }
         else  {
-            *player_handle = asset_server.load("textures/entity/hero1.png");
+            *player_handle = textures_ressource.player_center.clone();
         }
 
         if end_tick {
