@@ -136,52 +136,38 @@ fn setup(
         Player { game_x: None, game_y: None, is_animating: false, direction: Direction::No, has_change_pos:false },
     ));
 
-    //walls
-    {
-        let vertical_wall_size = vec2(WALL_THICKNESS, WALL_BLOCK_HEIGHT + WALL_THICKNESS);
-        let horizontal_wall_size = vec2(WALL_BLOCK_WIDTH + WALL_THICKNESS, WALL_THICKNESS);
-        
-        //left wall
-        commands.spawn(SpriteBundle {
-            transform: Transform {
-                translation: vec3(LEFT_WALL, 0.0, 0.0),
-                ..default()
-            },
-            sprite: Sprite {
-                color: WALL_COLOR,
-                custom_size: Some(vertical_wall_size),
-                ..default()
-            },
-            ..default()
-        });
+    { // side wall
+        let wall_tex = asset_server.load("textures/walls/dungeon-wall.png");
 
-        //right wall
-        commands.spawn(SpriteBundle {
+        for game_y in 0..18 {
+            commands.spawn(SpriteBundle { // left
+                    texture: wall_tex.clone(),
+                    transform: Transform {
+                        translation: vec3(25. +(-1*50-RIGHT) as f32, 25. + (game_y*50-TOP) as f32, 0.),
+                        ..default()
+                    },
+                    sprite: Sprite {
+                        color: Color::rgb(1., 1., 1.),
+                        custom_size: Some(Vec2::new(50., 50.,)),
+                        ..default()
+                    },
+                    ..default()
+            });
+
+            commands.spawn(SpriteBundle { // right
+                texture: wall_tex.clone(),
                 transform: Transform {
-                    translation: vec3(RIGHT_WALL, 0.0, 0.0),
+                    translation: vec3(25. +(18*50-RIGHT) as f32, 25. + (game_y*50-TOP) as f32, 0.),
                     ..default()
                 },
                 sprite: Sprite {
-                    color: WALL_COLOR,
-                    custom_size: Some(vertical_wall_size),
+                    color: Color::rgb(1., 1., 1.),
+                    custom_size: Some(Vec2::new(50., 50.,)),
                     ..default()
                 },
                 ..default()
             });
-
-        //top wall
-        commands.spawn(SpriteBundle {
-                transform: Transform {
-                    translation: vec3(0.0, TOP_WALL, 0.0),
-                    ..default()
-                },
-                sprite: Sprite {
-                    color: WALL_COLOR,
-                    custom_size: Some(horizontal_wall_size),
-                    ..default()
-                },
-                ..default()
-            });
+        }
     }
 
     { // Clouds

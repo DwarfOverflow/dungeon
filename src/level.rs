@@ -68,10 +68,6 @@ pub fn change_level_event_listener(
             let level_map = &custom_asset.unwrap().map;
             let level_map: Vec<&str> = level_map.split_whitespace().collect();
             level_map
-
-            /*
-            Voir l'exemple
-             */
         };
 
         let mut game_x;
