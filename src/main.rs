@@ -153,8 +153,7 @@ fn setup(
                 ..default()
             },
             ..default()
-        }
-    );
+        });
 
         //right wall
         commands.spawn(SpriteBundle {
@@ -168,8 +167,7 @@ fn setup(
                     ..default()
                 },
                 ..default()
-            }
-        );
+            });
 
         //top wall
         commands.spawn(SpriteBundle {
@@ -216,7 +214,7 @@ fn setup(
 
             // Top clouds
             for for_y in 0..100 {
-                let y = for_y+380;
+                let y = for_y+350;
                 
                 let spawning_chance = ({if for_y < 30 {0.003} else {0.0007}} + {if for_x < 95 || for_x > 905 {0.0005} else {0.003}}) / 4.;
 
