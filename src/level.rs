@@ -73,7 +73,10 @@ pub fn change_level_event_listener(
         let mut game_x;
         let mut game_y = level_map.len() as i32 -1;
 
+        let mut index = 0;
         for line in level_map {
+            index+=1;
+
             game_x = 0;
             for block in line.chars() {
                 let block_pos = vec2(25. +(game_x*50-RIGHT) as f32, 25. + (game_y*50-TOP) as f32);
@@ -95,6 +98,29 @@ pub fn change_level_event_listener(
                             },
                             Wall { game_x, game_y },
                         ));
+                        { // murs tout en bas
+                            if index == 12 {
+                                for i in 1..5 {
+                                    let pos = vec2(25. +(game_x*50-RIGHT) as f32, 25. + ((game_y-i)*50-TOP) as f32);
+                                    commands.spawn((
+                                        SpriteBundle {
+                                            texture: wall_tex.clone(),
+                                            transform: Transform {
+                                                translation: pos.extend(0.),
+                                                ..default()
+                                            },
+                                            sprite: Sprite {
+                                                color: Color::rgb(1., 1., 1.),
+                                                custom_size: Some(Vec2::new(50., 50.,)),
+                                                ..default()
+                                            },
+                                            ..default()
+                                        },
+                                        Wall { game_x, game_y: game_y-i, },
+                                    ));
+                                }
+                            }
+                        }
                     }
                     '&' => {
                         let player_query = player_query.single_mut();

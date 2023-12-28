@@ -21,21 +21,8 @@ mod tick;
 pub use crate::tick::*;
 
 // screen size
-const LEFT: i32 = -450;
 const RIGHT: i32 = 450;
-const BOTTOM: i32 = -300;
 const TOP: i32 = 300;
-
-//wall
-const LEFT_WALL: f32 = LEFT as f32;
-const RIGHT_WALL: f32 = RIGHT as f32;
-const BOTTOM_WALL: f32 = BOTTOM as f32;
-const TOP_WALL: f32 = TOP as f32;
-
-const WALL_THICKNESS: f32 = 10.0;
-const WALL_BLOCK_WIDTH: f32 = RIGHT_WALL - LEFT_WALL;
-const WALL_BLOCK_HEIGHT: f32 = TOP_WALL - BOTTOM_WALL;
-const WALL_COLOR: Color = Color::rgb(0.8, 0.8, 0.8);
 
 // Game Size
 const SCREEN_GAME_X: i32 = 18;
@@ -139,7 +126,7 @@ fn setup(
     { // side wall
         let wall_tex = asset_server.load("textures/walls/dungeon-wall.png");
 
-        for game_y in 0..18 {
+        for game_y in -2..20 {
             commands.spawn(SpriteBundle { // left
                     texture: wall_tex.clone(),
                     transform: Transform {
