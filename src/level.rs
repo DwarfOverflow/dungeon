@@ -25,11 +25,17 @@ pub fn change_level_event_listener(
     mut despawn_wall_query: Query<Entity, With<Wall>>,
     mut despawn_chest_query: Query<Entity, With<Chest>>,
     mut despawn_monster_query: Query<Entity, With<Monster>>,
+
+    mut game_state: ResMut<NextState<GameState>>,
 ) {
     match change_level_event.read().last() {
         None => return,
         Some(event) => {
             if event.new_level {
+                if level_res.level == NB_LEVEL as usize{
+                    game_state.set(GameState::End);
+                    return;
+                }
                 level_res.level += 1;
             }
         }

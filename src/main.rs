@@ -19,6 +19,8 @@ mod ressource;
 pub use crate::ressource::*;
 mod tick;
 pub use crate::tick::*;
+mod end_game;
+pub use crate::end_game::*;
 
 // screen size
 const RIGHT: i32 = 450;
@@ -52,6 +54,7 @@ fn main() {
         .insert_resource(BeginClick { position: None })
         .init_resource::<LevelMaps>()
         .init_resource::<TexturesRessource>()
+        .add_state::<GameState>()
         .add_event::<ChangeLevelEvent>()
         .add_event::<TickEvent>()
         .add_event::<EndTickEvent>()
@@ -63,8 +66,16 @@ fn main() {
             tick_event_listener,
             end_tick_event_listener,
             send_maps_on_load
-        ))
+        ).run_if(in_state(GameState::Game)))
+        .add_systems(OnEnter(GameState::End), start_end_screen)
         .run();
+}
+
+#[derive(Clone, Copy, Default, Eq, PartialEq, Debug, Hash, States)]
+pub enum GameState {
+    #[default]
+    Game,
+    End
 }
 
 #[derive(PartialEq, Clone, Copy)]
