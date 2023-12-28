@@ -10,3 +10,4 @@ rm /home/simon/projet/naincroyable.github.io/*.js
 
 cp dist/* /home/simon/projet/naincroyable.github.io/
 cd /home/simon/projet/naincroyable.github.io/
+code .
