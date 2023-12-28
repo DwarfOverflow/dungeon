@@ -36,7 +36,7 @@ impl Monster {
         if target.distance(current_position.truncate()) < ANIMATION_SPEED*2. {
             self.is_animating = false;
             self.direction = Direction::No;
-            return target.extend(0.);
+            return target.extend(0.5);
         }
         self.is_animating = true;
         
@@ -54,7 +54,7 @@ impl Monster {
             self.direction = Direction::Left;
         }
 
-        return  temporary_position.extend(0.);
+        return  temporary_position.extend(0.5);
     }
 
     pub(crate) fn new(game_x: i32, game_y: i32) -> Monster{
