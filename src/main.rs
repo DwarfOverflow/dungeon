@@ -207,6 +207,7 @@ fn move_player(
 
     blue_door_query: Query<&BlueDoor>,
     red_door_query: Query<&RedDoor>,
+    wall_query: Query<&Wall>,
     mut chest_query: Query<&mut Chest>,
 
     buttons: Res<Input<MouseButton>>,
@@ -221,6 +222,7 @@ fn move_player(
     let mut player = player.single_mut();
     if player.game_x.is_none() || player.game_y.is_none() { return; }
 
+    // Obtenir les mouvements de souris
     let (mouse_left, mouse_right, mouse_tap) = {
         if q_windows.single().cursor_position().is_none() { return; }
         let current_position = q_windows.single().cursor_position().unwrap();
@@ -251,6 +253,16 @@ fn move_player(
         (mouse_left, mouse_right, mouse_tap)
     };
 
+    // si le joueur est en train de tomber l'empecher de bouger
+    let mut on_the_ground = false;
+    for wall in wall_query.iter() {
+        if wall.game_x == player.game_x.unwrap() && wall.game_y == player.game_y.unwrap()-1 {
+            on_the_ground = true;
+        }
+    }
+    if !on_the_ground { return; }
+
+    // gerer les mouvements
     if (input.pressed(KeyCode::Left) || mouse_left) && !player.is_animating {
         player.move_with_direction(Direction::Left);
         tick_event.send(TickEvent);
