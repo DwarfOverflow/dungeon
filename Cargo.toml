@@ -10,6 +10,7 @@ bevy = "0.12.0"
 bevy_common_assets = "0.8.0"
 bevy_pixel_camera = "0.12.1"
 chrono = "0.4.31"
+rand = "0.8.5"
 serde = "1.0.193"
 
 [target.wasm32-unknown-unknown]

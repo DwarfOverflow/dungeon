@@ -5,6 +5,7 @@ use bevy::sprite::Anchor;
 use bevy_pixel_camera::{
     PixelCameraPlugin, PixelZoom, PixelViewport
 };
+use rand::prelude::*;
 
 mod level;
 pub use crate::level::*;
@@ -96,8 +97,8 @@ fn setup(
     commands.spawn((
         Camera2dBundle::default(),
         PixelZoom::FitSize {
-            width: 900,
-            height: 600,
+            width: 1200,
+            height: 800,
         },
         PixelViewport,
     ));
@@ -170,21 +171,6 @@ fn setup(
             }
         );
 
-        //bottom wall
-        commands.spawn(SpriteBundle {
-                transform: Transform {
-                    translation: vec3(0.0, BOTTOM_WALL, 0.0),
-                    ..default()
-                },
-                sprite: Sprite {
-                    color: WALL_COLOR,
-                    custom_size: Some(horizontal_wall_size),
-                    ..default()
-                },
-                ..default()
-            },
-        );
-
         //top wall
         commands.spawn(SpriteBundle {
                 transform: Transform {
@@ -198,6 +184,58 @@ fn setup(
                 },
                 ..default()
             });
+    }
+
+    { // Clouds
+        let mut rng = rand::thread_rng();
+
+        for for_x in 0..1000 {
+            let x = for_x-500;
+
+            // Bottom clouds
+            for for_y in 0..100 {
+                let y = for_y-430;
+                
+                let spawning_chance = ({if for_y < 30 {0.003} else {0.0007}} + {if for_x < 95 || for_x > 905 {0.0005} else {0.003}}) / 4.;
+
+                if rng.gen::<f32>() < spawning_chance {
+                    commands.spawn(SpriteBundle {
+                        texture: asset_server.load("textures/decor/cloud.png"),
+                        transform: Transform {
+                            translation: vec3(x as f32, y as f32, 2.0),
+                            ..default()
+                        },
+                        sprite: Sprite {
+                            custom_size: Some(vec2(150., 150.)),
+                            ..default()
+                        },
+                        ..default()
+                    });
+                }
+            }
+
+            // Top clouds
+            for for_y in 0..100 {
+                let y = for_y+380;
+                
+                let spawning_chance = ({if for_y < 30 {0.003} else {0.0007}} + {if for_x < 95 || for_x > 905 {0.0005} else {0.003}}) / 4.;
+
+                if rng.gen::<f32>() < spawning_chance {
+                    commands.spawn(SpriteBundle {
+                        texture: asset_server.load("textures/decor/cloud.png"),
+                        transform: Transform {
+                            translation: vec3(x as f32, y as f32, 2.0),
+                            ..default()
+                        },
+                        sprite: Sprite {
+                            custom_size: Some(vec2(150., 150.)),
+                            ..default()
+                        },
+                        ..default()
+                    });
+                }
+            }
+        }
     }
 }
 
