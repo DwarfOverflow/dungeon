@@ -21,6 +21,8 @@ mod tick;
 pub use crate::tick::*;
 mod end_game;
 pub use crate::end_game::*;
+mod math;
+pub use crate::math::*;
 
 // screen size
 const RIGHT: i32 = 450;

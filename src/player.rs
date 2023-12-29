@@ -1,6 +1,9 @@
 use bevy::{ecs::component::Component, math::{Vec2, vec2, vec3, Vec3}};
 
 use crate::{Direction, SCREEN_GAME_X, TOP, RIGHT, ANIMATION_SPEED};
+use crate::math::get_distance;
+
+const FALLING_SPEED: f32 = 2.;
 
 #[derive(Component)]
 pub struct Player {
@@ -59,40 +62,38 @@ impl Player {
 
         let target = Vec2::new(9. + (self.game_x.unwrap()*50-RIGHT) as f32, (self.game_y.unwrap()*50-TOP) as f32);
 
-        // Voir si à la fin du trajet
-        if target.distance(current_position.truncate()) < ANIMATION_SPEED*2. {
-            let was_animating = self.is_animating;
-            self.is_animating = false;
-            self.direction = Direction::No;
-            if was_animating || self.has_change_pos {
-                return (target.extend(1.), true);
-            } else {
-                return (target.extend(1.), false);
+        if current_position.x != target.x { // On le bouge sur l'axe des X
+            self.is_animating = true;
+            // Si la co X est proche de destination
+            if get_distance(target.x, current_position.x) < ANIMATION_SPEED {
+                return (vec3(target.x, current_position.y, 1.), false);
             }
-        }
-        self.has_change_pos = false;
-        self.is_animating = true;
-        
-        // Calculer étape intermédiaire
-        let angle = ((current_position.x-target.x)/target.distance(current_position.truncate())).asin();
-        let temporary_position =  Vec2::new(
-            -angle.sin()*ANIMATION_SPEED + current_position.x,
-            -angle.cos()*ANIMATION_SPEED + current_position.y
-        );
 
-        // si il bouge sur l'axe des Y
-        if vec2(target.x, 0.).distance(vec2(current_position.x, 0.)) < vec2(0., target.y).distance(vec2(0., current_position.y)) {
-            self.direction = Direction::Bottom;
-        }
-        // Axe des X
-        else {
-            if target.x > current_position.x {
-                self.direction = Direction::Right;
-            } else {
+            // sinon on bouge progressivement
+            if current_position.x > target.x { // voir de quel coté aller
                 self.direction = Direction::Left;
+                return (vec3(current_position.x-ANIMATION_SPEED, current_position.y, 1.), false);
+            } else {
+                self.direction = Direction::Right;
+                return (vec3(current_position.x+ANIMATION_SPEED, current_position.y, 1.), false);
+            }
+        } else {
+            // si Y proche destination
+            if get_distance(current_position.y, target.y) < ANIMATION_SPEED {
+                self.direction = Direction::No;
+                self.is_animating = false;
+                return (target.extend(1.), true);
+            }
+            
+            // sinon on bouge progressivement
+            self.is_animating = true;
+            if current_position.y > target.y { // voir de quel coté aller
+                self.direction = Direction::Bottom;
+                return (vec3(target.x, current_position.y-FALLING_SPEED, 1.), false);
+            } else {
+                self.direction = Direction::No;
+                return (vec3(target.x, current_position.y+ANIMATION_SPEED, 1.), false);
             }
         }
-
-        return  (temporary_position.extend(1.), false);
     }
 }
