@@ -52,14 +52,19 @@ pub fn end_tick_event_listener(
         let player_game_y = player.game_y.unwrap();
 
         
-        let mut is_wall_under_player = false;
+        let mut is_something_under_player = false;
         for wall in wall_query.iter() {
             if player_game_x == wall.game_x && player_game_y-1 == wall.game_y {
-                is_wall_under_player = true;
+                is_something_under_player = true;
+            }
+        }
+        for monster in monster_query.iter() {
+            if player_game_x == monster.game_x() && player_game_y-1 == monster.game_y() {
+                is_something_under_player = true;
             }
         }
 
-        if is_wall_under_player == false {
+        if is_something_under_player == false {
             player.move_with_direction(Direction::Bottom);
             events.p1().send(TickEvent);
         }

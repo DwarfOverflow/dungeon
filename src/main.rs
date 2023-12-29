@@ -246,6 +246,7 @@ fn move_player(
     mut player: Query<&mut Player>,
     mut player_transform: Query<&mut Transform, With<Player>>,
 
+    monster_query: Query<&Monster>,
     blue_door_query: Query<&BlueDoor>,
     red_door_query: Query<&RedDoor>,
     wall_query: Query<&Wall>,
@@ -308,6 +309,11 @@ fn move_player(
     let mut on_the_ground = false;
     for wall in wall_query.iter() {
         if wall.game_x == player.game_x.unwrap() && wall.game_y == player.game_y.unwrap()-1 {
+            on_the_ground = true;
+        }
+    }
+    for monster in monster_query.iter() {
+        if player.game_x.unwrap() == monster.game_x() && player.game_y.unwrap()-1 == monster.game_y() {
             on_the_ground = true;
         }
     }
