@@ -321,12 +321,32 @@ fn move_player(
 
     // gerer les mouvements
     if (input.pressed(KeyCode::Left) || mouse_left) && !player.is_animating {
-        player.move_with_direction(Direction::Left);
-        tick_event.send(TickEvent);
+        // vérifier qu'il n'y a pas de murs
+        let mut can_go = true;
+        for wall in wall_query.iter() {
+            if wall.game_x == player.game_x.unwrap()-1 && wall.game_y == player.game_y.unwrap() {
+                can_go = false;
+                break;
+            }
+        }
+        if can_go {
+            player.move_with_direction(Direction::Left);
+            tick_event.send(TickEvent);
+        }
     }
     else if (input.pressed(KeyCode::Right) || mouse_right) && !player.is_animating {
-        player.move_with_direction(Direction::Right);
-        tick_event.send(TickEvent);
+        // vérifier qu'il n'y a pas de murs
+        let mut can_go = true;
+        for wall in wall_query.iter() {
+            if wall.game_x == player.game_x.unwrap()+1 && wall.game_y == player.game_y.unwrap() {
+                can_go = false;
+                break;
+            }
+        }
+        if can_go {
+            player.move_with_direction(Direction::Right);
+            tick_event.send(TickEvent);
+        }
     }
     else if (input.pressed(KeyCode::Up) || mouse_tap) && !player.is_animating {
         // Blue Door

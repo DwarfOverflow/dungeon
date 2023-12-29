@@ -8,6 +8,7 @@ pub struct TickEvent;
 pub fn tick_event_listener(
     mut events: ParamSet<(EventReader<TickEvent>, EventWriter<TickEvent>)>,
     mut monsters: Query<&mut Monster>,
+    wall_query: Query<&Wall>,
     player: Query<&Player>,
 ) {
     if events.p0().read().last().is_none() { return; }
@@ -18,10 +19,30 @@ pub fn tick_event_listener(
     { // move monster
         for mut monster in monsters.iter_mut() {
             if monster.game_x() > player_game_x {
-                monster.move_with_direction(Direction::Left);
+                // vérifier qu'il n'y a pas de murs
+                let mut can_go = true;
+                for wall in wall_query.iter() {
+                    if wall.game_x == monster.game_x()-1 && wall.game_y == monster.game_y() {
+                        can_go = false;
+                        break;
+                    }
+                }
+                if can_go {
+                    monster.move_with_direction(Direction::Left);
+                }
             }
             if monster.game_x() < player_game_x {
-                monster.move_with_direction(Direction::Right)
+                // vérifier qu'il n'y a pas de murs
+                let mut can_go = true;
+                for wall in wall_query.iter() {
+                    if wall.game_x == monster.game_x()+1 && wall.game_y == monster.game_y() {
+                        can_go = false;
+                        break;
+                    }
+                }
+                if can_go {
+                    monster.move_with_direction(Direction::Right);
+                }
             }
         }
     }
