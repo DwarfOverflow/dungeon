@@ -19,6 +19,10 @@ pub struct RedDoor {
 }
 
 #[derive(Component)]
+pub struct StartButton {
+}
+
+#[derive(Component)]
 pub struct Chest {
     pub game_x: i32,
     pub game_y: i32,

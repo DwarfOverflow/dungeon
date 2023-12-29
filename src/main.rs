@@ -219,6 +219,25 @@ fn setup(
             }
         }
     }
+
+    { // click to start button
+        commands.spawn((
+            SpriteBundle {
+                texture: asset_server.load("textures/decor/start-button.png"),
+                sprite: Sprite {
+                    anchor: Anchor::BottomLeft,
+                    ..Default::default()
+                },
+                transform: Transform {
+                    translation: vec3(-260., -100., 5.),
+                    scale: vec3(0.7, 0.7, 1.),
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+            StartButton {},
+        ));
+    }
 }
 
 fn move_player(
@@ -229,6 +248,7 @@ fn move_player(
     red_door_query: Query<&RedDoor>,
     wall_query: Query<&Wall>,
     mut chest_query: Query<&mut Chest>,
+    mut button_query: Query<Entity, With<StartButton>>,
 
     buttons: Res<Input<MouseButton>>,
     mut begin_click: ResMut<BeginClick>,
@@ -238,6 +258,7 @@ fn move_player(
     mut tick_event: EventWriter<TickEvent>,
 
     input: Res<Input<KeyCode>>,
+    mut commands: Commands,
 ) {
     let mut player = player.single_mut();
     if player.game_x.is_none() || player.game_y.is_none() { return; }
@@ -272,6 +293,14 @@ fn move_player(
 
         (mouse_left, mouse_right, mouse_tap)
     };
+
+    // si click faire disparaitre le bouton click to start
+    if mouse_tap && !button_query.is_empty() {
+        for button in &mut button_query {
+            commands.entity(button).despawn();
+        }
+    }
+
 
     // si le joueur est en train de tomber l'empecher de bouger
     let mut on_the_ground = false;
