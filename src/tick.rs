@@ -17,6 +17,16 @@ pub fn tick_event_listener(
     let player_game_x = player.game_x.unwrap();
 
     { // move monster
+        let monsters_pos = {
+            let mut monsters_pos: Vec<(i32, i32)> = Vec::new();
+
+            for monster in monsters.iter() {
+                monsters_pos.push((monster.game_x(), monster.game_y()));
+            }
+
+            monsters_pos
+        };
+
         for mut monster in monsters.iter_mut() {
             if monster.game_x() > player_game_x {
                 // vérifier qu'il n'y a pas de murs
@@ -24,6 +34,12 @@ pub fn tick_event_listener(
                 for wall in wall_query.iter() {
                     if wall.game_x == monster.game_x()-1 && wall.game_y == monster.game_y() {
                         can_go = false;
+                        break;
+                    }
+                }
+                for other_monster in monsters_pos.iter() {
+                    if other_monster.0 == monster.game_x()-1 && other_monster.1 == monster.game_y() {
+                        can_go = false; // empecher un monstre de rentrer dans un autre
                         break;
                     }
                 }
@@ -36,6 +52,12 @@ pub fn tick_event_listener(
                 let mut can_go = true;
                 for wall in wall_query.iter() {
                     if wall.game_x == monster.game_x()+1 && wall.game_y == monster.game_y() {
+                        can_go = false;
+                        break;
+                    }
+                }
+                for other_monster in monsters_pos.iter() {
+                    if other_monster.0 == monster.game_x()+1 && other_monster.1 == monster.game_y() {
                         can_go = false;
                         break;
                     }

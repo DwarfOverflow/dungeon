@@ -381,6 +381,7 @@ fn move_player(
         for mut chest in chest_query.iter_mut() {
             if chest.game_x == player.game_x.unwrap() && chest.game_y == player.game_y.unwrap() {
                 chest.open();
+                tick_event.send(TickEvent);
                 return;
             }
         }
