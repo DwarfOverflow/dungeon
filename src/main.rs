@@ -116,6 +116,8 @@ fn setup(
 
         textures_ressource.bat_left = (asset_server.load("textures/entity/left-bat-1.png"), asset_server.load("textures/entity/left-bat-2.png"));
         textures_ressource.bat_right = (asset_server.load("textures/entity/right-bat-1.png"), asset_server.load("textures/entity/right-bat-2.png"));
+    
+        textures_ressource.chest_open = (asset_server.load("textures/object/chest-2.png"), asset_server.load("textures/object/chest-3.png"), asset_server.load("textures/object/chest-4.png"))
     }
 
     // Player
@@ -395,7 +397,9 @@ pub struct TexturesRessource {
     pub player_left: (Handle<Image>, Handle<Image>),
 
     pub bat_right: (Handle<Image>, Handle<Image>), // never used but it save handle in memory
-    pub bat_left: (Handle<Image>, Handle<Image>)   // same
+    pub bat_left: (Handle<Image>, Handle<Image>),   // same
+
+    pub chest_open: (Handle<Image>, Handle<Image>, Handle<Image>), // same
 }
 
 fn animate_entity(
