@@ -5,7 +5,7 @@ use bevy::utils::thiserror;
 use thiserror::Error;
 use crate::*;
 
-pub const NB_LEVEL: i32 = 3;
+pub const NB_LEVEL: i32 = 4;
 
 #[derive(Event)]
 pub struct ChangeLevelEvent {
