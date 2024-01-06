@@ -43,6 +43,7 @@ fn main() {
                 primary_window: Some(Window {
                     fit_canvas_to_parent: true,
                     prevent_default_event_handling: false,
+                    title: "Dungeon - Game of Thrones Adventure".to_owned(),
                     ..default()
                 }),
                 ..default()
