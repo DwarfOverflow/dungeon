@@ -1,4 +1,4 @@
-use bevy::{ecs::component::Component, math::{Vec2, vec2, vec3, Vec3}};
+use bevy::{asset::AssetServer, ecs::{component::Component, system::{Commands, Res}}, math::{Vec2, vec2, vec3, Vec3}, sprite::{Anchor, Sprite, SpriteBundle}, transform::components::Transform};
 
 use crate::{Direction, SCREEN_GAME_X, TOP, RIGHT, ANIMATION_SPEED};
 use crate::math::get_distance;
@@ -96,4 +96,23 @@ impl Player {
             }
         }
     }
+}
+
+pub fn spawn_player(mut commands: Commands, asset_server: Res<AssetServer>) {
+    commands.spawn((
+        SpriteBundle {
+            texture: asset_server.load("textures/entity/hero1.png"),
+            sprite: Sprite {
+                anchor: Anchor::BottomLeft,
+                ..Default::default()
+            },
+            transform: Transform {
+                translation: vec3(0., 0., 1.),
+                scale: vec3(2., 2., 1.),
+                ..Default::default()
+            },
+            ..Default::default()
+        },
+        Player { game_x: None, game_y: None, is_animating: false, direction: Direction::No, has_change_pos:false },
+    ));
 }
