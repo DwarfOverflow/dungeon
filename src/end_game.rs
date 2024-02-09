@@ -1,4 +1,13 @@
-use bevy::{log::info, ecs::system::{Commands, Res}, asset::AssetServer, sprite::{SpriteBundle, Anchor, Sprite}, transform::components::Transform, math::vec3};
+use bevy::{app::{App, Plugin}, asset::AssetServer, ecs::{schedule::OnEnter, system::{Commands, Res}}, log::info, math::vec3, sprite::{Anchor, Sprite, SpriteBundle}, transform::components::Transform};
+
+use crate::*;
+
+pub struct EndGamePlugin;
+impl Plugin for EndGamePlugin {
+    fn build(&self, app: &mut App) {
+        app.add_systems(OnEnter(GameState::End), start_end_screen);
+    }
+}
 
 pub fn start_end_screen(
     mut commands: Commands,

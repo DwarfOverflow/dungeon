@@ -52,6 +52,7 @@ fn main() {
         .add_plugins(PlayerPlugin)
         .add_plugins(LevelPlugin)
         .add_plugins(TickPlugin)
+        .add_plugins(EndGamePlugin)
         .insert_resource(ClearColor(Color::rgb(0.05, 0.05, 0.05)))
         .insert_resource(BeginClick { position: None })
         .init_resource::<TexturesRessource>()
@@ -59,7 +60,6 @@ fn main() {
         .add_systems(Update, (
             animate_entity,
         ).run_if(in_state(GameState::Game)))
-        .add_systems(OnEnter(GameState::End), start_end_screen)
         .run();
 }
 
