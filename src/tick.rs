@@ -1,6 +1,6 @@
 use bevy::{app::{App, Plugin, Update}, asset::AssetServer, ecs::{event::{Event, EventReader, EventWriter}, query::With, schedule::{common_conditions::in_state, IntoSystemConfigs}, system::{Commands, ParamSet, Query, Res}}, math::Vec2, prelude::default, render::color::Color, sprite::{Sprite, SpriteBundle}, transform::components::Transform};
 
-use crate::{ChangeLevelEvent, Chest, Direction, GameState, Monster, Player, Wall, SCREEN_GAME_Y};
+use crate::*;
 
 pub struct TickPlugin;
 impl Plugin for TickPlugin {
@@ -30,57 +30,80 @@ pub fn tick_event_listener(
     let player_game_x = player.game_x.unwrap();
 
     { // move monster
-        let monsters_pos = {
-            let mut monsters_pos: Vec<(i32, i32)> = Vec::new();
-
-            for monster in monsters.iter() {
-                monsters_pos.push((monster.game_x(), monster.game_y()));
-            }
-
-            monsters_pos
-        };
-
         for mut monster in monsters.iter_mut() {
-            if monster.game_x() > player_game_x {
-                // vérifier qu'il n'y a pas de murs
-                let mut can_go = true;
-                for wall in wall_query.iter() {
-                    if wall.game_x == monster.game_x()-1 && wall.game_y == monster.game_y() {
-                        can_go = false;
+            monster.has_moved = false; // tous les monstres n'ont pas encore bougé
+        }
+
+        let mut ended = false;
+        while ended == false && monsters.iter().len() != 0{
+            println!("while ended == false:");
+            let monsters_pos = { // liste statique de toutes les positions des monstres
+                let mut monsters_pos: Vec<(i32, i32)> = Vec::new();
+                monsters.iter().for_each(|e| {monsters_pos.push((e.game_x(), e.game_y()));});
+                monsters_pos
+            };
+
+            for mut monster in monsters.iter_mut() {
+                if !monster.has_moved {
+                    let has_moved = move_monster(monster.as_mut(), player_game_x, &wall_query, &monsters_pos);
+                    if has_moved {
+                        monster.has_moved = true;
                         break;
                     }
                 }
-                for other_monster in monsters_pos.iter() {
-                    if other_monster.0 == monster.game_x()-1 && other_monster.1 == monster.game_y() {
-                        can_go = false; // empecher un monstre de rentrer dans un autre
-                        break;
-                    }
-                }
-                if can_go {
-                    monster.move_with_direction(Direction::Left);
-                }
-            }
-            if monster.game_x() < player_game_x {
-                // vérifier qu'il n'y a pas de murs
-                let mut can_go = true;
-                for wall in wall_query.iter() {
-                    if wall.game_x == monster.game_x()+1 && wall.game_y == monster.game_y() {
-                        can_go = false;
-                        break;
-                    }
-                }
-                for other_monster in monsters_pos.iter() {
-                    if other_monster.0 == monster.game_x()+1 && other_monster.1 == monster.game_y() {
-                        can_go = false;
-                        break;
-                    }
-                }
-                if can_go {
-                    monster.move_with_direction(Direction::Right);
-                }
+                ended = true;
             }
         }
     }
+}
+
+fn move_monster(
+    monster: &mut Monster,
+    player_game_x: i32,
+    wall_query: &Query<'_, '_, &Wall>, 
+    monsters_pos: &Vec<(i32, i32)>
+) -> bool {
+    if monster.game_x() > player_game_x {
+        // vérifier qu'il n'y a pas de murs
+        let mut can_go = true;
+        for wall in wall_query.iter() {
+            if wall.game_x == monster.game_x()-1 && wall.game_y == monster.game_y() {
+                can_go = false;
+                break;
+            }
+        }
+        for other_monster in monsters_pos.iter() {
+            if other_monster.0 == monster.game_x()-1 && other_monster.1 == monster.game_y() {
+                can_go = false; // empecher un monstre de rentrer dans un autre
+                break;
+            }
+        }
+        if can_go {
+            monster.move_with_direction(Direction::Left);
+            return true;
+        }
+    }
+    if monster.game_x() < player_game_x {
+        // vérifier qu'il n'y a pas de murs
+        let mut can_go = true;
+        for wall in wall_query.iter() {
+            if wall.game_x == monster.game_x()+1 && wall.game_y == monster.game_y() {
+                can_go = false;
+                break;
+            }
+        }
+        for other_monster in monsters_pos.iter() {
+            if other_monster.0 == monster.game_x()+1 && other_monster.1 == monster.game_y() {
+                can_go = false;
+                break;
+            }
+        }
+        if can_go {
+            monster.move_with_direction(Direction::Right);
+            return true;
+        }
+    }
+    return false;
 }
 
 #[derive(Event)]

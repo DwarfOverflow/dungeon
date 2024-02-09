@@ -108,7 +108,6 @@ impl Player {
 }
 
 pub fn spawn_player(mut commands: Commands, asset_server: Res<AssetServer>) {
-    println!("spawn player");
     commands.spawn((
         SpriteBundle {
             texture: asset_server.load("textures/entity/hero1.png"),

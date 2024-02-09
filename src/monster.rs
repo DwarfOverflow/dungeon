@@ -10,6 +10,7 @@ pub struct Monster {
     game_y: i32,
     is_animating: bool,
     direction: Direction,
+    pub has_moved: bool,
 }
 
 impl Monster {
@@ -58,7 +59,7 @@ impl Monster {
     }
 
     pub(crate) fn new(game_x: i32, game_y: i32) -> Monster{
-        return Monster { game_x: game_x, game_y:game_y, is_animating: false, direction: Direction::No };
+        return Monster { game_x: game_x, game_y:game_y, is_animating: false, direction: Direction::No, has_moved: false };
     }
 
     pub(crate) fn get_translation(game_x: i32, game_y: i32) -> Vec2 {
