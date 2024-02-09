@@ -1,7 +1,16 @@
-use bevy::{asset::AssetServer, ecs::{component::Component, system::{Commands, Res}}, math::{Vec2, vec2, vec3, Vec3}, sprite::{Anchor, Sprite, SpriteBundle}, transform::components::Transform};
+use bevy::{app::{App, Plugin}, asset::AssetServer, ecs::system::{Commands, Res}, math::{vec2, vec3, Vec2, Vec3}, sprite::{Anchor, Sprite, SpriteBundle}, transform::components::Transform};
 
-use crate::{Direction, SCREEN_GAME_X, TOP, RIGHT, ANIMATION_SPEED};
+use crate::*;
 use crate::math::get_distance;
+
+pub struct PlayerPlugin;
+impl Plugin for PlayerPlugin {
+    fn build(&self, app: &mut App) {
+        app
+            .add_systems(OnEnter(GameState::Game), spawn_player)
+            .add_systems(Update, move_player.run_if(in_state(GameState::Game)));
+    }
+}
 
 const FALLING_SPEED: f32 = 2.;
 
@@ -99,6 +108,7 @@ impl Player {
 }
 
 pub fn spawn_player(mut commands: Commands, asset_server: Res<AssetServer>) {
+    println!("spawn player");
     commands.spawn((
         SpriteBundle {
             texture: asset_server.load("textures/entity/hero1.png"),
@@ -115,4 +125,150 @@ pub fn spawn_player(mut commands: Commands, asset_server: Res<AssetServer>) {
         },
         Player { game_x: None, game_y: None, is_animating: false, direction: Direction::No, has_change_pos:false },
     ));
+}
+
+fn move_player(
+    mut player: Query<&mut Player>,
+    mut player_transform: Query<&mut Transform, With<Player>>,
+
+    monster_query: Query<&Monster>,
+    blue_door_query: Query<&BlueDoor>,
+    red_door_query: Query<&RedDoor>,
+    wall_query: Query<&Wall>,
+    mut chest_query: Query<&mut Chest>,
+    mut button_query: Query<Entity, With<StartButton>>,
+
+    buttons: Res<Input<MouseButton>>,
+    mut begin_click: ResMut<BeginClick>,
+    q_windows: Query<&Window, With<PrimaryWindow>>,
+
+    mut change_level_event: EventWriter<ChangeLevelEvent>,
+    mut tick_event: EventWriter<TickEvent>,
+
+    input: Res<Input<KeyCode>>,
+    mut commands: Commands,
+) {
+    let mut player = player.single_mut();
+    if player.game_x.is_none() || player.game_y.is_none() { return; }
+
+    // Obtenir les mouvements de souris
+    let (mouse_left, mouse_right, mouse_tap) = {
+        if q_windows.single().cursor_position().is_none() { return; }
+        let current_position = q_windows.single().cursor_position().unwrap();
+
+        if buttons.just_pressed(MouseButton::Left) {
+            begin_click.position = Some(current_position);
+        }
+
+        let mut mouse_tap = false;
+        let mut mouse_left = false;
+        let mut mouse_right = false;
+        if begin_click.position.is_some() {
+            let begin_click_position = begin_click.position.unwrap().clone();
+            if buttons.just_released(MouseButton::Left) {
+                // Voir si il y a un mouvement
+                if begin_click_position.distance(current_position) > 100. { // scroll
+                    if begin_click_position.x < current_position.x {
+                        mouse_right = true;
+                    } else {
+                        mouse_left = true;
+                    }
+                } else { // click
+                    mouse_tap = true;
+                }
+            }
+        }
+
+        (mouse_left, mouse_right, mouse_tap)
+    };
+
+    // si click faire disparaitre le bouton click to start
+    if mouse_tap && !button_query.is_empty() {
+        for button in &mut button_query {
+            commands.entity(button).despawn();
+        }
+    }
+
+
+    // si le joueur est en train de tomber l'empecher de bouger
+    let mut on_the_ground = false;
+    for wall in wall_query.iter() {
+        if wall.game_x == player.game_x.unwrap() && wall.game_y == player.game_y.unwrap()-1 {
+            on_the_ground = true;
+        }
+    }
+    for monster in monster_query.iter() {
+        if player.game_x.unwrap() == monster.game_x() && player.game_y.unwrap()-1 == monster.game_y() {
+            on_the_ground = true;
+        }
+    }
+    if !on_the_ground { return; }
+
+    // gerer les mouvements
+    if (input.pressed(KeyCode::Left) || mouse_left) && !player.is_animating {
+        // vérifier qu'il n'y a pas de murs
+        let mut can_go = true;
+        for wall in wall_query.iter() {
+            if wall.game_x == player.game_x.unwrap()-1 && wall.game_y == player.game_y.unwrap() {
+                can_go = false;
+                break;
+            }
+        }
+        if can_go {
+            player.move_with_direction(Direction::Left);
+            tick_event.send(TickEvent);
+        }
+    }
+    else if (input.pressed(KeyCode::Right) || mouse_right) && !player.is_animating {
+        // vérifier qu'il n'y a pas de murs
+        let mut can_go = true;
+        for wall in wall_query.iter() {
+            if wall.game_x == player.game_x.unwrap()+1 && wall.game_y == player.game_y.unwrap() {
+                can_go = false;
+                break;
+            }
+        }
+        if can_go {
+            player.move_with_direction(Direction::Right);
+            tick_event.send(TickEvent);
+        }
+    }
+    else if (input.pressed(KeyCode::Up) || mouse_tap) && !player.is_animating {
+        // Blue Door
+        for door in blue_door_query.iter() {
+            if door.game_x == player.game_x.unwrap() && door.game_y == player.game_y.unwrap() {
+                // teleport player to other blue door 
+                for tp_door in blue_door_query.iter() {
+                    if door.game_x != tp_door.game_x && door.game_y != tp_door.game_y && chrono::Local::now().timestamp_millis() > 500 {
+                        let mut player_transform = player_transform.single_mut();
+                        player_transform.translation = player.move_without_animation(tp_door.game_x, tp_door.game_y).extend(0.);
+                        tick_event.send(TickEvent);
+                        return;
+                    }
+                }
+            }
+        }
+
+        // Red Door
+        let red_door = red_door_query.single();
+        let mut all_chest_open = true;
+        for chest in chest_query.iter() {
+            if !chest.is_open {
+                all_chest_open = false;
+            }
+        }
+        if red_door.game_x == player.game_x.unwrap() && red_door.game_y == player.game_y.unwrap() && all_chest_open {
+            change_level_event.send(ChangeLevelEvent {new_level:true});
+            return;
+        }
+
+        // Chest
+        for mut chest in chest_query.iter_mut() {
+            if chest.game_x == player.game_x.unwrap() && chest.game_y == player.game_y.unwrap() {
+                chest.open();
+                tick_event.send(TickEvent);
+                return;
+            }
+        }
+    }
 }

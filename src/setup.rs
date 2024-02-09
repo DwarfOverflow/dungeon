@@ -2,24 +2,27 @@ use bevy::{math::{vec2, vec3}, prelude::*, sprite::Anchor};
 use bevy_pixel_camera::{PixelViewport, PixelZoom};
 use rand::Rng;
 
-use crate::{Direction, GameState, LevelMaps, Player, StartButton, TexturesRessource, NB_LEVEL, RIGHT, TOP};
+use crate::{GameState, LevelMaps, StartButton, TexturesRessource, NB_LEVEL, RIGHT, TOP};
 
 pub struct SetupPlugin;
 impl Plugin for SetupPlugin {
     fn build(&self, app: &mut App) {
         app
             .add_systems(OnEnter(GameState::Game), (
-                spawn_camera,
-                load_level_maps,
-                load_entity_assets,
                 build_side_wall,
                 spawn_cloud,
                 spawn_start_buttons,
+            ))
+            .add_systems(Startup, (
+                load_level_maps,
+                load_entity_assets,
+                spawn_camera,
             ));
     }
 }
 
 fn spawn_camera(mut commands: Commands) {
+    println!("spawn camera");
     commands.spawn((
         Camera2dBundle::default(),
         PixelZoom::FitSize {
@@ -34,6 +37,7 @@ fn load_level_maps(
     asset_server: Res<AssetServer>,
     mut level_maps: ResMut<LevelMaps>,
 ) {
+    println!("load level map");
     for index in 0..NB_LEVEL {
         level_maps.maps = Vec::new();
         level_maps.maps_handle.push(asset_server.load(format!("map/level-{}.lev", index+1)));
@@ -44,6 +48,7 @@ fn load_entity_assets(
     asset_server: Res<AssetServer>,
     mut textures_ressource: ResMut<TexturesRessource>,
 ){
+    println!("load entity assets");
     textures_ressource.player_center = asset_server.load("textures/entity/hero1.png");
     textures_ressource.player_left = (asset_server.load("textures/entity/hero-left-1.png"), asset_server.load("textures/entity/hero-left-2.png"));
     textures_ressource.player_right = (asset_server.load("textures/entity/hero-right-1.png"), asset_server.load("textures/entity/hero-right-2.png"));
@@ -58,6 +63,7 @@ fn build_side_wall(
     mut commands: Commands,
     asset_server: Res<AssetServer>
 ) {
+    println!("build side wall");
     let wall_tex = asset_server.load("textures/walls/dungeon-wall.png");
 
     for game_y in -2..20 {
@@ -95,6 +101,7 @@ fn spawn_cloud(
     mut commands: Commands,
     asset_server: Res<AssetServer>
 ) {
+    println!("spawn cloud");
     let mut rng = rand::thread_rng();
 
     for for_x in 0..1000 {
@@ -150,6 +157,7 @@ fn spawn_start_buttons(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
 ) {
+    println!("spawn start button");
     commands.spawn((
         SpriteBundle {
             texture: asset_server.load("textures/decor/start-button.png"),

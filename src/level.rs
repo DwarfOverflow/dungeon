@@ -7,6 +7,20 @@ use crate::*;
 
 pub const NB_LEVEL: i32 = 4;
 
+pub struct LevelPlugin;
+impl Plugin for LevelPlugin {
+    fn build(&self, app: &mut App) {
+        app
+            .add_systems(OnEnter(GameState::Game), send_maps_on_load)
+            .add_systems(Update, change_level_event_listener.run_if(in_state(GameState::Game)))
+            .init_resource::<LevelMaps>()
+            .insert_resource(CurrentLevel { level: 0 })
+            .init_asset::<LevelAsset>()
+            .init_asset_loader::<LevelAssetLoader>()
+            .add_event::<ChangeLevelEvent>();
+    }
+}
+
 #[derive(Event)]
 pub struct ChangeLevelEvent {
     pub new_level: bool,
@@ -199,6 +213,7 @@ pub fn change_level_event_listener(
 }
 
 pub fn send_maps_on_load(mut level_maps: ResMut<LevelMaps>, custom_assets: ResMut<Assets<LevelAsset>>, mut change_level_event: EventWriter<ChangeLevelEvent>) {
+    println!("send maps on load");
     if level_maps.sended { return; }
     let mut maps = Vec::new();
     for map_handle in &level_maps.maps_handle {
