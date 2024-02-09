@@ -1,6 +1,19 @@
-use bevy::{ecs::{event::{Event, EventReader, EventWriter}, system::{ParamSet, Query, Commands, Res}, query::With}, transform::components::Transform, sprite::{SpriteBundle, Sprite}, prelude::default, render::color::Color, math::Vec2, asset::AssetServer};
+use bevy::{app::{App, Plugin, Update}, asset::AssetServer, ecs::{event::{Event, EventReader, EventWriter}, query::With, schedule::{common_conditions::in_state, IntoSystemConfigs}, system::{Commands, ParamSet, Query, Res}}, math::Vec2, prelude::default, render::color::Color, sprite::{Sprite, SpriteBundle}, transform::components::Transform};
 
-use crate::{Player, Wall, Direction, SCREEN_GAME_Y, Chest, Monster, ChangeLevelEvent};
+use crate::{ChangeLevelEvent, Chest, Direction, GameState, Monster, Player, Wall, SCREEN_GAME_Y};
+
+pub struct TickPlugin;
+impl Plugin for TickPlugin {
+    fn build(&self, app: &mut App) {
+        app
+            .add_systems(Update, (
+                tick_event_listener,
+                end_tick_event_listener,
+            ).run_if(in_state(GameState::Game)))
+            .add_event::<TickEvent>()
+            .add_event::<EndTickEvent>();
+    }
+}
 
 #[derive(Event)]
 pub struct TickEvent;
