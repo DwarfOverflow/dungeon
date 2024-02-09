@@ -4,8 +4,3 @@ use bevy::{ecs::system::Resource, math::Vec2};
 pub struct BeginClick {
     pub position: Option<Vec2>
 }
-
-#[derive(Resource, Clone, Copy)]
-pub struct CurrentLevel {
-    pub level: usize,
-}

@@ -21,6 +21,11 @@ impl Plugin for LevelPlugin {
     }
 }
 
+#[derive(Resource, Clone, Copy)]
+pub struct CurrentLevel {
+    pub level: usize,
+}
+
 #[derive(Event)]
 pub struct ChangeLevelEvent {
     pub new_level: bool,
